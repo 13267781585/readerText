@@ -337,3 +337,5 @@ static final class ArrayListSpliterator<E> implements Spliterator<E>
 2
 4
 ```
+
+9. Vector和ArrayList实现类时，区别是Vector在方法前加了 synchronized 限制，是线程安全的。
