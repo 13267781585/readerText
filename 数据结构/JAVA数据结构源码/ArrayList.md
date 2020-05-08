@@ -338,4 +338,7 @@ static final class ArrayListSpliterator<E> implements Spliterator<E>
 4
 ```
 
-9. Vector和ArrayList实现类时，区别是Vector在方法前加了 synchronized 限制，是线程安全的。
+9. Vector和ArrayList区别   
+i.Vector在方法前加了 synchronized 限制，是线程安全的。  
+iii. Vector 默认初始空间是10，ArrayList 默认初始空间是0。  
+iv. Vector 可以设置每次扩容的大小，如果没有设置，则默认扩容为原来空间大小的一倍； ArrayList 若默认初始化时，在第一次大小为15，后序扩容为 需要空间大小 + 1/2 * 需要空间大小；
