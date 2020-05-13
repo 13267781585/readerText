@@ -19,3 +19,32 @@ public boolean add(E e) {
     }
 ```
 
+2. LinkedHashSet 是基于 LinkedHashMap 实现的
+```java
+public class HashSet<E>
+    extends AbstractSet<E>
+    implements Set<E>, Cloneable, java.io.Serializable
+```
+
+再创建对象时，调用了父类 HashSet 的默认构造函数，底层创建了 LinkedHashMap
+```java
+ public LinkedHashSet(int initialCapacity, float loadFactor) {
+        super(initialCapacity, loadFactor, true);
+    }
+
+    
+    public LinkedHashSet(int initialCapacity) {
+        super(initialCapacity, .75f, true);
+    }
+
+ 
+    public LinkedHashSet() {
+        super(16, .75f, true);
+    }
+
+     HashSet(int initialCapacity, float loadFactor, boolean dummy) {
+        map = new LinkedHashMap<>(initialCapacity, loadFactor);
+    }
+```
+
+4. HashSet 和 LinkedHashSet 都是线程不安全的
