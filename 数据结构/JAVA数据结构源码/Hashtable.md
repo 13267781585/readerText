@@ -83,7 +83,7 @@ protected void rehash() {
     }
 ```
 
-4. Hashtable 和 HashMap 的区别
+4. Hashtable 和 HashMap 的区别   
 i.  hash函数 不同
 ```java
 //HashMap 用 key 的hasCode() 函数返回值 高16位 异或 低16位 作为hash值
