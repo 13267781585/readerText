@@ -89,3 +89,77 @@
 链接：https://leetcode-cn.com/problems/best-time-to-buy-and-sell-stock-ii/solution/mai-mai-gu-piao-de-zui-jia-shi-ji-ii-by-leetcode-s/
 来源：力扣（LeetCode）
 著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
+
+
+486. 预测赢家
+
+给你一个整数数组 nums 。玩家 1 和玩家 2 基于这个数组设计了一个游戏。
+
+玩家 1 和玩家 2 轮流进行自己的回合，玩家 1 先手。开始时，两个玩家的初始分值都是 0 。每一回合，玩家从数组的任意一端取一个数字（即，nums[0] 或 nums[nums.length - 1]），取到的数字将会从数组中移除（数组长度减 1 ）。玩家选中的数字将会加到他的得分上。当数组中没有剩余数字可取时，游戏结束。
+
+如果玩家 1 能成为赢家，返回 true 。如果两个玩家得分相等，同样认为玩家 1 是游戏的赢家，也返回 true 。你可以假设每个玩家的玩法都会使他的分数最大化。
+
+ 
+
+示例 1：
+
+输入：nums = [1,5,2]
+输出：false
+解释：一开始，玩家 1 可以从 1 和 2 中进行选择。
+如果他选择 2（或者 1 ），那么玩家 2 可以从 1（或者 2 ）和 5 中进行选择。如果玩家 2 选择了 5 ，那么玩家 1 则只剩下 1（或者 2 ）可选。 
+所以，玩家 1 的最终分数为 1 + 2 = 3，而玩家 2 为 5 。
+因此，玩家 1 永远不会成为赢家，返回 false 。
+
+示例 2：
+
+输入：nums = [1,5,233,7]
+输出：true
+解释：玩家 1 一开始选择 1 。然后玩家 2 必须从 5 和 7 中进行选择。无论玩家 2 选择了哪个，玩家 1 都可以选择 233 。
+最终，玩家 1（234 分）比玩家 2（12 分）获得更多的分数，所以返回 true，表示玩家 1 可以成为赢家。
+
+1. 解析  
+这里和一般的dp不太一样，因为先手和后手都有相关联，并且在选择的时候并不是选择边界最大的一个，例如 70 100 1 1，先手选择并不会选择70，所以先手在选择时存在两种情况，后手在先手的情况下又存在四种情况。这里会定义两个dp方法。(一般只有一个)   
+int first(int[] nums,int left,int right)  //先手选择   
+int second(int[] nums,int left,int right)  //后手选择  
+状态方程： 
+玩家一：先手  
+a.选择左边，等于左边的值加上后手选择的最大值  first(nums,left,right) = nums[left] + second(nums,left+1,right)  
+b.选择右边，等于右边的值加上后手选择的最大值  first(nums,left,right) = nums[right] + second(nums,left,right-1);   
+最后结果为 res = Math.max(左边，右边);
+终止条件:left==right return nums[left]   
+玩家二：后手   
+a.先手选了左边 second(nums,left,right) = first(nums,left+1,right)    
+b.先手选了右边 second(nums,left,right) = first(nums,left,right)   
+最后结果 res = Math.min(左边，右边)  
+终止条件：left==right return 0   
+对后手min的解释:先手玩家一定会让我在后手拿到最小的数   
+![486-1.jpg](.\image\486-1.jpg)
+```java
+    public boolean PredictTheWinner(int[] nums) {
+        if(nums==null||nums.length==0){
+            return false;
+        }
+        int sum = 0;
+        for(int i=0;i<nums.length;i++){
+            sum += nums[i];
+        }
+        int first = firstChoose(nums,0,nums.length-1);
+        //不能用 sum / 2 去比较  会省略小数点
+        return 2 * first - sum >= 0;
+    }
+
+    public int firstChoose(int[] nums,int left,int right){
+        if(left==right){
+            return nums[left];
+        }
+        return Math.max(nums[left] + secondChoose(nums,left+1,right),nums[right] + secondChoose(nums,left,right-1));
+    }
+
+    public int secondChoose(int[] nums,int left,int right){
+        if(left==right){
+            return 0;
+        }
+        return Math.min(firstChoose(nums,left+1,right),firstChoose(nums,left,right-1));
+    }
+```
+

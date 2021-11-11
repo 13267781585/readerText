@@ -103,6 +103,62 @@ protected Object getSingleton(String beanName, boolean allowEarlyReference) {
 <bean name="factoryDao" factory-bean="daoFactory" factory-method="getFactoryDaoImpl"></bean> 
 ```
 
+5. 特殊的注入 lookup-method和replaced-method  
+a. lookup-method  
+lookup method注入是spring动态改变bean里方法的实现。方法执行返回的对象，使用spring内原有的这类对象替换，通过改变方法返回值来动态改变方法。原理:使用cglib重新生成子类，重写方法返回对象。  
+```java
+public abstract class CommandManager {
+
+   public Object process(Object commandState) {
+       // grab a new instance of the appropriate Command interface
+       Command command = createCommand();
+       // set the state on the (hopefully brand new) Command instance
+       command.setState(commandState);
+       return command.execute();
+   }
+
+   // okay... but where is the implementation of this method?
+   protected abstract Command createCommand();
+}
+```
+```xml
+<bean id="command" class="fiona.apple.AsyncCommand" scope="prototype">
+</bean>
+
+<bean id="commandManager" class="fiona.apple.CommandManager">
+ <lookup-method name="createCommand" bean="command"/>
+</bean>
+```
+b. replaced-method   
+replaced method注入是spring提供了一种替换bean方法的机制。新的逻辑需要实现org.springframework.beans.factory.support.MethodReplacer接口的方法。原理:cglib生成子类重写方法。   
+```java
+public class ReplacementComputeValue implements MethodReplacer {
+    //新的逻辑
+    public Object reimplement(Object o, Method m, Object[] args) throws Throwable {
+        String input = (String) args[0];
+        ...
+        return ...;
+    }
+}
+```
+```xml
+<bean id="myValueCalculator" class="x.y.z.MyValueCalculator">
+    <!-- arbitrary method replacement -->
+    <replaced-method name="computeValue" replacer="replacementComputeValue">
+        <arg-type>String</arg-type>
+    </replaced-method>
+</bean>
+ 
+<bean id="replacementComputeValue" class="a.b.c.ReplacementComputeValue"/>
+
+```
+c. 应用场景   
+1. 提高编程的灵活性  
+2. 可实现可拔插、耦合性小的有点   
+
+参考作者：小陈阿飞
+链接：https://www.jianshu.com/p/06f71d241866
+
 ### ApplicationContext和BeanFactory的区别
 ApplicationContext和BeanFactory都是Spring容器的接口，负责bean的配置和实例化。   
 1. ApplicationContext继承自BeanFactory，在BeanFactory的基础上扩展了更多的功能，例如：国际化的消息访问、资源访问、事件传递等，更能适应功能扩展的需求。   
@@ -173,6 +229,28 @@ public interface DestructionAwareBeanPostProcessor extends BeanPostProcessor {
 8. 自定义销毁方法 destroy   
 
 ### AOP是在哪里处理的   
+在bean初始化完成后，会调用BeanProcessor接口的postProcessAfterInitialization方法，其中有一个InfrastructureAdvisorAutoProxyCreator实现类是处理aop的，会使用jdk或者cglib生成代理类返回  
+```java
+public Object applyBeanPostProcessorsAfterInitialization(Object existingBean, String beanName)
+            throws BeansException {
+
+        Object result = existingBean;
+        for (BeanPostProcessor beanProcessor : getBeanPostProcessors()) {
+            Object current = beanProcessor.postProcessAfterInitialization(result, beanName);
+            if (current == null) {
+                return result;
+            }
+            result = current;
+        }
+        return result;
+    }
+```
+
+参考自 https://www.cnblogs.com/zcmzex/p/8822509.html
+
+### Spring实例化bean的方式
+1. 反射(在不需要动态操作字节码的条件下)   
+2. Cglib生成(在需要动态生成类，重写方法等操作字节码的情况下)
 
 
 ### BeanDefinition属性   
