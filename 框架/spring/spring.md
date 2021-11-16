@@ -1,5 +1,42 @@
 # Spring 笔记
 
+### Spring模块
+![3](.\image\3.jpg)
+1. 核心容器（Core Container）
+
+    Spring-Core：核心工具类，Spring其他模块大量使用Spring-Core。
+    Spring-Beans：Spring定义Bean的支持。
+    Spring-Context：运行时Spring容器。
+    Spring-Context-Support：Spring对第三方包的集成支持。
+    Spring-Expression：使用表达式语言在运行时查询和操作对象。
+
+2. AOP
+
+    Spring-AOP：基于代理的AOP支持。
+    Spring-Aspects：基于AspectJ的AOP支持。
+
+3. 消息（messaging）
+
+    Spring-Messaging：对消息架构和协议的支持。
+
+4. WEB
+
+    Spring-Web： 提供基础的Web集成功能，再Web项目中提供Spring的容器。
+    Spring-Webmvc：提供基于Servlet的Spring MVC。
+    Spring-WebSocket：提供WebSocket功能。
+    Spring-Webmvc-Protlet：提供Protlet的支持。
+
+5. 数据访问/集成（Data Access/Integration）
+
+    Spring-JDBC：提供以JDBC访问数据库的支持。
+    Spring-TX：提供编程式是声明式事务的支持。
+    Spring-ORM：提供对对象/关系映射技术的支持。
+    Spring-OXM：提供对对象/XML映射技术的支持。
+    Spring-JMS：提供对JMS的支持。
+
+链接：https://www.jianshu.com/p/722e020150ef
+
+
 ### 监听器接口ServletContextListener,在Web项目启动关闭执行方法
 ```java
 public interface ServletContextListener extends EventListener {
@@ -281,3 +318,150 @@ public Object applyBeanPostProcessorsAfterInitialization(Object existingBean, St
     private String destroyMethodName;  //销毁方法名
 
 ```
+### Springmvc的流程   
+![4.jpg](.\image\4.jpg)
+
+
+1. 用户请求被Spring 前端控制Servelt DispatcherServlet捕获；
+
+2. DispatcherServlet对请求URL进行解析，根据URI，调用HandlerMapping获得Handler对象以及Handler对象对应的拦截器，最后以HandlerExecutionChain引用链的形式返回；
+
+3. DispatcherServlet 根据获得的Handler，选择一个合适的HandlerAdapter。
+
+4. 提取Request中的模型数据，填充Handler入参，开始执行Handler（Controller)。 在填充Handler的入参过程中，根据你的配置，Spring将帮你做一些额外的工作：   
+    a. HttpMessageConveter： 将请求消息（如Json、xml等数据）转换成一个对象，将对象转换为指定的响应信息；   
+    b. 数据转换：对请求消息进行数据转换。如String转换成Integer、Double等；   
+    c. 数据根式化：对请求消息进行数据格式化。 如将字符串转换成格式化数字或格式化日期等；   
+
+5. Handler执行完成后，向DispatcherServlet 返回一个ModelAndView对象；
+根据返回的ModelAndView，选择一个适合的ViewResolver；
+
+6. ViewResolver 结合Model和View，来渲染视图；
+
+7. 将渲染结果返回给客户端。
+
+转载自：https://blog.csdn.net/weixin_43258908/article/details/88595159
+
+
+### Spring用到哪些设计模式
+1. 单例->ioc容器   
+2. 代理模式->aop   
+3. 适配者模式
+* aop  
+* spring MVC中的适配器模式
+
+在Spring MVC中，DispatcherServlet 根据请求信息调用 HandlerMapping，解析请求对应的 Handler。解析到对应的 Handler（也就是我们平常说的 Controller 控制器）后，开始由HandlerAdapter 适配器处理。HandlerAdapter 作为期望接口，具体的适配器实现类用于对目标类进行适配，Controller 作为需要适配的类。   
+因为Controller的种类有多种，如果不适用适配者模式去处理，需要对每一个种类的Controller都作判断，当需要新增新的Controller时需要去修改以前的代码，违反了开闭原则。
+```java
+if(mappedHandler.getHandler() instanceof MultiActionController){  
+   ((MultiActionController)mappedHandler.getHandler()).xxx  
+}else if(mappedHandler.getHandler() instanceof XXX){  
+    ...  
+}else if(...){  
+   ...  
+}  
+```
+4. 装饰者模式
+5. 工厂模式
+6. 模板模式
+7. 策略模式 
+转载自：https://www.cnblogs.com/kyoner/p/10949246.html
+
+
+### SpringAop和AspectJ的区别
+  Aop             Aspectj   
+1. 运行时增强  编译时增强   
+2. 基于代理实现  基于字节码操作   
+3. 直接使用  导入jar包
+4. 速度慢、功能少  速度快、功能齐全  
+5. 只能基于方法织入   对字段、方法、构造函数等 
+
+
+### bean是线程安全的吗？
+* Springioc并没有对bean的线程安全做什么处理，所以默认条件下，bean是单例的，是线程不安全的，例如Controller、Server这些bean若没有涉及到数据的存储共享，只是方法的调用是没有线程问题的，因为方法的调用形成的栈帧存放在虚拟机栈上是线程私有的；若涉及到数据的存储共享，则有线程安全问题。
+
+* 解决方法
+1. 使用多例，每次请求重新生成一个bean(不是100%的线程安全，对static变量除外)
+2. 使用ThreadLoccal去处理
+
+
+
+### Spring事务内部类调用不起效 
+* 原因是使用jdk代理模式，jdk代理模式是通过生成一个代理对象，类内部带有被代理对象的引用，在被代理方法前后加入逻辑后利用引用调用方法，所以调用的是没有加入事务逻辑的方法，所以不起作用。
+* 使用cglib代理模式不会出现这样的问题，因为cglib是通过继承被代理类，重写方法去实现的，所以调用的是子类的已经加入了事务逻辑的方法。
+* 解决方法：
+1. 重新写一个方法，从外部调用  
+2. 使用cglib代理模式 
+
+### Springboot相对于Spring的优劣势
+优势：
+1. 简化配置，去除了许多xml配置文件，配置简单  
+2. 简化依赖，starter  
+3. 简化部署，内置了tomcat等容器
+4. 扩展了很多第三方的插件，例如redis、rabbitmq等
+
+劣势：
+1. 排查问题困难  
+2. 版本迭代变化大
+
+### Springboot自动配置
+自动配置是指根据项目中用到的组件去做默认的配置(redis、aop、rabbitmq等)。这个过程是Spring框架自动进行的。   
+
+* 原理  
+Springboot的主函数注解@SpringbootApplication包含了@EnableAutoConfiguration注解，@EnableAutoConfiguration引入了一个AutoConfigurationImportSelector类去做自动配置的工作，改类会去扫描含有 META-INF/spring.facotories文件的jar包，文件采用键值对的方式记录了自动配置的相关类。会实例化这些类去做一些配置的工作。
+
+```java
+# Auto Configure
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+org.springframework.boot.autoconfigure.admin.SpringApplicationAdminJmxAutoConfiguration,\
+org.springframework.boot.autoconfigure.aop.AopAutoConfiguration,\
+org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration,\
+```
+* 自动配置体现在哪里？ 
+Springboot定义了一组基于@Conditional的注解，可以根据不同的条件判断bean是否需要被实例化去做对应的配置。
+```java
+@Configuration：这个配置就不用多做解释了，我们一直在使用
+@EnableConfigurationProperties：这是一个开启使用配置参数的注解，value值就是我们配置实体参数映射的ClassType，将配置实体作为配置来源。
+以下为SpringBoot内置条件注解：
+@ConditionalOnBean：当SpringIoc容器内存在指定Bean的条件
+@ConditionalOnClass：当SpringIoc容器内存在指定Class的条件
+@ConditionalOnExpression：基于SpEL表达式作为判断条件
+@ConditionalOnJava：基于JVM版本作为判断条件
+@ConditionalOnJndi：在JNDI存在时查找指定的位置
+@ConditionalOnMissingBean：当SpringIoc容器内不存在指定Bean的条件
+@ConditionalOnMissingClass：当SpringIoc容器内不存在指定Class的条件
+@ConditionalOnNotWebApplication：当前项目不是Web项目的条件
+@ConditionalOnProperty：指定的属性是否有指定的值
+@ConditionalOnResource：类路径是否有指定的值
+@ConditionalOnSingleCandidate：当指定Bean在SpringIoc容器内只有一个，或者虽然有多个但是指定首选的Bean
+@ConditionalOnWebApplication：当前项目是Web项目的条件
+
+```
+原文转自：
+https://www.jianshu.com/p/5901da52ca09
+
+
+
+
+
+
+
+
+· Java 的IO
+
+· 三种IO 的特点
+
+· 最了解那一种IO？讲一下FileInputStream/FileOutputStream
+
+· 怎么文件的读写？具体过程
+
+· 序列化和反序列化
+
+· 如何优化可以提高文件的读写速度
+
+· 封装成Buffer 可以提升速度的原因
+
+· 文件IO 的时候有遇到过爆内存的情况吗？怎么监控？
+
+    2.2 Mybatis防止sql注入
+    2.3 Mybatis特性 分页 有没有用过插件 
