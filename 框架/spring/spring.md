@@ -441,8 +441,14 @@ Springboot定义了一组基于@Conditional的注解，可以根据不同的条�
 https://www.jianshu.com/p/5901da52ca09
 
 
+### Spring支持的几种bean的作用域。
+1. singleton : bean在每个Spring ioc 容器中只有一个实例。
+2. prototype：一个bean的定义可以有多个实例。
+3. request：每次http请求都会创建一个bean，该作用域仅在基于web的Spring ApplicationContext情形下有效。
+4. session：在一个HTTP Session中，一个bean定义对应一个实例。该作用域仅在基于web的Spring ApplicationContext情形下有效。
+5. global-session：在一个全局的HTTP Session中，一个bean定义对应一个实例。该作用域仅在基于web的Spring ApplicationContext情形下有效。
 
-
+https://ifeve.com/spring-interview-questions-and-answers/
 
 
 
