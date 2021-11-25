@@ -341,4 +341,49 @@ static final class ArrayListSpliterator<E> implements Spliterator<E>
 9. Vector和ArrayList区别   
 i.Vector在方法前加了 synchronized 限制，是线程安全的。  
 iii. Vector 默认初始空间是10，ArrayList 默认初始空间是0。  
-iv. Vector 可以设置每次扩容的大小，如果没有设置，则默认扩容为原来空间大小的一倍； ArrayList 若默认初始化时，在第一次大小为15，后序扩容为 需要空间大小 + 1/2 * 需要空间大小；
+iv. Vector 可以设置每次扩容的大小，如果没有设置，则默认扩容为原来空间大小的一倍； ArrayList 若默认初始化时，在第一次大小为15，后序扩容为 需要空间大小 + 1/2 * 需要空间大小；  
+
+
+10. 线程安全的List
+* Vector 在方法面前加上 synchronized 关键字   
+* Collections.synchronizedList 包装 List，返回一个线程安全的List，利用对象锁机制   
+* CopyOnWriteArrayList 和 CopyOnWriteArraySet，利用 ReentrantLock 保证线程安全，写操作加锁，读操作不加锁，适用于读多写少的场景(每次添加元素都会复制一遍数据，若数据量大，效率会降低)   
+```java
+public boolean add(E e) {
+    // 加锁
+    final ReentrantLock lock = this.lock;
+    lock.lock();
+    try {
+        // 获取原始集合
+        Object[] elements = getArray();
+        int len = elements.length;
+        
+        // 复制一个新集合
+        Object[] newElements = Arrays.copyOf(elements, len + 1);
+        newElements[len] = e;
+        
+        // 替换原始集合为新集合
+        setArray(newElements);
+        return true;
+    } finally {
+        // 释放锁
+        lock.unlock();
+    }
+}
+
+
+private E get(Object[] a, int index) {
+    return (E) a[index];
+}
+
+public E get(int index) {
+    return get(getArray(), index);
+}
+
+//CopyOnWriteArraySet使用 CopyOnWriteArrayList 的 addIfAbsent 方法来去重的，添加元素的时候判断对象是否已经存在，不存在才添加进集合。
+public boolean addIfAbsent(E e) {
+    Object[] snapshot = getArray();
+    return indexOf(e, snapshot, 0, snapshot.length) >= 0 ? false :
+        addIfAbsent(e, snapshot);
+}
+```
