@@ -91,7 +91,7 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 因为放入三级缓存的bean是在运行完类构造器后才放入的，若在执行构造器的时候就已经出现循环依赖，则无法解决。   
 
 4. 第二级缓存有什么意义？第一三级缓存不就能解决循环依赖的问题吗？     
-在获取的bean没有被代理的情况下，使用第一三级的缓存可以解决循环依赖的问题。但是当获取的bean使用了代理时，会出现问题，因为三级缓存存放的是最原始的bean，当bean被获取出来且被代理时，会重新生成一个代理对象，每次获取都会重新生成一个新的对象，这不符合单例的特点，所以使用二级缓存来存放这些代理对象，当需要再次获取bean的时候直接从二级缓存获取，不需要再重新生成新的代理对象。   
+在获取的bean没有被代理的情况下，使用第一三级的缓存可以解决循环依赖的问题。但是当获取的bean使用了代理时，会出现问题，因为三级缓存存放的是最原始的bean，当去获取的bean被代理时，会重新生成一个代理对象包裹原来的bean，每次获取都会重新生成一个新的代理对象指向这个bean，这不符合单例的特点，所以使用二级缓存来存放这些代理对象，当需要再次获取bean的时候直接从二级缓存获取，不需要再重新生成新的代理对象。   
 
 ```java
 //获取对象的方法
@@ -127,7 +127,7 @@ protected Object getSingleton(String beanName, boolean allowEarlyReference) {
 ### 依赖注入的方式  
 1. set方法注入   
 2. 构造器注入  
-3. 静态方法注入  
+3. 静态工厂方法注入  
 ```xml
 <!--(3)此处获取对象的方式是从工厂类中获取静态方法--> 
 <bean name="staticFactoryDao" class="com.bless.springdemo.factory.DaoFactory" factory-method="getStaticFactoryDaoImpl"></bean> 
@@ -135,7 +135,7 @@ protected Object getSingleton(String beanName, boolean allowEarlyReference) {
 
 参考自https://www.cnblogs.com/java-class/p/4727775.html  
 
-4. 实例方法注入  
+4. 实例工厂方法注入  
 ```xml
 <bean name="factoryDao" factory-bean="daoFactory" factory-method="getFactoryDaoImpl"></bean> 
 ```
@@ -192,6 +192,7 @@ public class ReplacementComputeValue implements MethodReplacer {
 c. 应用场景   
 1. 提高编程的灵活性  
 2. 可实现可拔插、耦合性小的有点   
+6. 注解注入
 
 参考作者：小陈阿飞
 链接：https://www.jianshu.com/p/06f71d241866
@@ -203,7 +204,7 @@ ApplicationContext和BeanFactory都是Spring容器的接口，负责bean的配�
 3. BeanFactory和ApplicationContext都支持BeanPostProcessor、BeanFactoryPostProcessor，BeanFactory需要手动注册，而ApplicationContext则是自动注册   
 
 ### Aware接口的作用   
-Spring的依赖注入最大的好处就是Bean并不依赖Spring容易，也就是说可以随意去更改Spring容易，耦合性很低，但是很多情况下Bean需要去感知Spring容器去获取一些必要的功能，所以Aware接口可以通过回调方法的方式实现这种需求。  
+Spring的依赖注入最大的好处就是Bean并不依赖Spring容器，也就是说可以随意去更改Spring容器，耦合性很低，但是很多情况下Bean需要去感知Spring容器去获取一些必要的功能，所以Aware接口可以通过回调方法的方式实现这种需求。  
 ```java
 BeanNameAware //获取beanName
 BeanFactoryAware //获取BeanFactory对象
@@ -364,7 +365,7 @@ if(mappedHandler.getHandler() instanceof MultiActionController){
 4. 装饰者模式
 5. 工厂模式
 6. 模板模式
-7. 策略模式 
+7. 策略模式    
 转载自：https://www.cnblogs.com/kyoner/p/10949246.html
 
 
@@ -386,7 +387,7 @@ if(mappedHandler.getHandler() instanceof MultiActionController){
 
 
 
-### Spring事务内部类调用不起效 
+### Spring事务类内部方法调用不起效 
 * 原因是使用jdk代理模式，jdk代理模式是通过生成一个代理对象，类内部带有被代理对象的引用，在被代理方法前后加入逻辑后利用引用调用方法，所以调用的是没有加入事务逻辑的方法，所以不起作用。
 * 使用cglib代理模式不会出现这样的问题，因为cglib是通过继承被代理类，重写方法去实现的，所以调用的是子类的已经加入了事务逻辑的方法。
 * 解决方法：
