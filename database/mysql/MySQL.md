@@ -1,5 +1,8 @@
 ## MySQL 
 
+### 行格式
+* mysql行的格式有Compact，Redundant，Dynamic，Compressed四种，mysql5.5以上的默认compact格式
+
 ### 排名内置函数   
 * RANK()  
  并列跳跃排名，并列即相同的值，相同的值保留重复名次，遇到下一个不同值时，跳跃到总共的排名。 1 2 2 4 5  
@@ -92,3 +95,84 @@ update table_name inner join (select b from table_name where id = 1) table_name1
 * where 是在返回结果之前对数据进行过滤的条件，不可以使用聚合函数，可以使用所有列
 * having 一般搭配 group by 使用(也可以单独使用)，对返回的数据集进行每一个组的过滤，可以使用聚合函数，因为是对返回的集合的操作，所以只能操作数据集中有的列
 * 执行顺序 on -> where -> having
+
+### BufferPool缓冲池
+https://blog.csdn.net/wuhenyouyuyouyu/article/details/93377605  
+https://blog.csdn.net/m0_37892044/article/details/121795586
+
+### binlog 字段解析(ROW格式)
+```sql
+/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
+DELIMITER /*!*/;
+# at 4
+#190308 10:05:03 server id 1  end_log_pos 123 CRC32 0xff02e23d     Start: binlog v 4, server v 5.7.22-log created 190308 10:05:03
+# Warning: this binlog is either in use or was not closed properly.
+# at 123
+#190308 10:05:03 server id 1  end_log_pos 154 CRC32 0xb81da4c5     Previous-GTIDs
+# [empty]
+# at 154
+#190308 10:05:09 server id 1  end_log_pos 219 CRC32 0xfb30d42c     Anonymous_GTID  last_committed=0    sequence_number=1   rbr_only=yes
+/*!50718 SET TRANSACTION ISOLATION LEVEL READ COMMITTED*//*!*/;
+SET @@SESSION.GTID_NEXT= 'ANONYMOUS'/*!*/;
+# at 219
+...
+...
+# at 21019
+#190308 10:10:09 server id 1  end_log_pos 21094 CRC32 0x7a405abc     Query   thread_id=113   exec_time=0 error_code=0
+SET TIMESTAMP=1552011009/*!*/;
+BEGIN
+/*!*/;
+# at 21094
+#190308 10:10:09 server id 1  end_log_pos 21161 CRC32 0xdb7a2b35     Table_map: `maxwell`.`positions` mapped to number 110
+# at 21161
+#190308 10:10:09 server id 1  end_log_pos 21275 CRC32 0xec3be372     Update_rows: table id 110 flags: STMT_END_F
+### UPDATE `maxwell`.`positions`
+### WHERE
+###   @1=1
+###   @2='master.000003'
+###   @3=20262
+###   @4=NULL
+###   @5='maxwell'
+###   @6=NULL
+###   @7=1552011005707
+### SET
+###   @1=1
+###   @2='master.000003'
+###   @3=20923
+###   @4=NULL
+###   @5='maxwell'
+###   @6=NULL
+###   @7=1552011009790
+# at 21275
+#190308 10:10:09 server id 1  end_log_pos 21306 CRC32 0xe6c4346d     Xid = 13088
+COMMIT/*!*/;
+SET @@SESSION.GTID_NEXT= 'AUTOMATIC' /* added by mysqlbinlog */ /*!*/;
+DELIMITER ;
+# End of log file
+/*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
+/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+```
+
+```sql
+# at 21019
+#190308 10:10:09 server id 1  end_log_pos 21094 CRC32 0x7a405abc     Query   thread_id=113   exec_time=0 error_code=0
+SET TIMESTAMP=1552011009/*!*/;
+BEGIN
+/*!*/;
+```
+* position: 位于文件中的位置，即第一行的（# at 21019）,说明该事件记录从文件第21019个字节开始
+
+* timestamp: 事件发生的时间戳，即第二行的（#190308 10:10:09）
+
+* server id: 服务器标识（1）
+
+* end_log_pos 表示下一个事件开始的位置（即当前事件的结束位置+1）
+
+* thread_id: 执行该事件的线程id （thread_id=113）
+
+* exec_time: 事件执行的花费时间
+
+* error_code: 错误码，0意味着没有发生错误
+
+* type:事件类型Query
