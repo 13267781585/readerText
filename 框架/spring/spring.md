@@ -9,7 +9,7 @@
     Spring-Context：运行时Spring容器。
     Spring-Context-Support：Spring对第三方包的集成支持。
     Spring-Expression：使用表达式语言在运行时查询和操作对象。
-
+ 
 2. AOP
 
     Spring-AOP：基于代理的AOP支持。
@@ -409,7 +409,7 @@ if(mappedHandler.getHandler() instanceof MultiActionController){
 自动配置是指根据项目中用到的组件去做默认的配置(redis、aop、rabbitmq等)。这个过程是Spring框架自动进行的。   
 
 * 原理  
-Springboot的主函数注解@SpringbootApplication包含了@EnableAutoConfiguration注解，@EnableAutoConfiguration引入了一个AutoConfigurationImportSelector类去做自动配置的工作，改类会去扫描含有 META-INF/spring.facotories文件的jar包，文件采用键值对的方式记录了自动配置的相关类。会实例化这些类去做一些配置的工作。
+Springboot的主函数注解@SpringbootApplication包含了@EnableAutoConfiguration注解，@EnableAutoConfiguration引入了一个AutoConfigurationImportSelector类去做自动配置的工作，改类会去扫描含有 META-INF/spring.factories文件的jar包，文件采用键值对的方式记录了自动配置的相关类。会实例化这些类去做一些配置的工作。
 
 ```java
 # Auto Configure
@@ -438,6 +438,20 @@ Springboot定义了一组基于@Conditional的注解，可以根据不同的条�
 @ConditionalOnWebApplication：当前项目是Web项目的条件
 
 ```
+
+例如：
+```java
+@Configuration
+//redis 中判断是否有 RedisOperations类
+@ConditionalOnClass({RedisOperations.class})
+@EnableConfigurationProperties({RedisProperties.class})
+@Import({LettuceConnectionConfiguration.class, JedisConnectionConfiguration.class})
+public class RedisAutoConfiguration {
+    public RedisAutoConfiguration() {
+    }
+    .....
+}
+```
 原文转自：
 https://www.jianshu.com/p/5901da52ca09
 
@@ -453,22 +467,9 @@ https://ifeve.com/spring-interview-questions-and-answers/
 
 
 
-
-· Java 的IO
-
-· 三种IO 的特点
-
-· 最了解那一种IO？讲一下FileInputStream/FileOutputStream
-
-· 怎么文件的读写？具体过程
-
-· 序列化和反序列化
-
-· 如何优化可以提高文件的读写速度
-
-· 封装成Buffer 可以提升速度的原因
-
-· 文件IO 的时候有遇到过爆内存的情况吗？怎么监控？
-
-    2.2 Mybatis防止sql注入
-    2.3 Mybatis特性 分页 有没有用过插件 
+### Spring IOC 和 DI
+* 控制反转：通过外部容器去实例化对象和维护类的依赖关系，控制权由应用程序转移到外部容器，通过用户配置的方式进行依赖注入
+* 优势：
+1. 实现对类依赖关系的解耦，提高类的复用性   
+2. 可以扩展类的生命周期，实现更加复杂的功能
+3. 将类的实例化过程抽象出来，可以减少重复的代码简化开发

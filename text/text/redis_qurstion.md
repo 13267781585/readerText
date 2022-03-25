@@ -15,7 +15,7 @@
 2) "key1"
 3) "myKey"
 127.0.0.1:6379> scan 0 MATCH * COUNT 1
-1) "2"
+1) "2" 
 2) 1) "db_number"
 127.0.0.1:6379> scan 2 MATCH * COUNT 1
 1) "1"

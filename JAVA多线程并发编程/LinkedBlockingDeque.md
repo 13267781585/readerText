@@ -146,3 +146,5 @@ public void put(E e) throws InterruptedException {
         }
     }
 ```
+
+4. 初始化可以不指定队列长度，默认 Integer.MAX_VALUE,可能发生内层溢出

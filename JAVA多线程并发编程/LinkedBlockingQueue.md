@@ -214,3 +214,6 @@ https://www.imooc.com/article/18726
 
 
 #### head、last不需要保证可见性吗？
+
+
+#### 初始化可以不指定队列长度，默认 Integer.MAX_VALUE,可能发生内层溢出
