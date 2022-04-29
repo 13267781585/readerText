@@ -44,6 +44,14 @@ MySQL 需要创建临时表来存储查询的结果，临时表可能是内存�
 * insert + select   
 * 函数操作 group_concat()/count(distinct)
 
+3. Using where 通过 where 过滤条件
+4. Using index 索引覆盖
+5. Using index condition 索引下推
+6. Using join buffer (Block Nested Loop), Using join buffer (Batched Key Access)
+使用缓存和对应连接算法提高查询速度
+7. Using MMR
+使用 mmr 策略
+
 #### 使用where条件的三种方式
 3. Using index：表明查询使用了覆盖索引，不用回表，查询效率非常高。
 4. Using index condition：表示查询命中索引后，如果where中还有和索引相关的判断条件，会将条件下推到存储索引层，对索引查询出的数据进行再一次的过滤再回表查询数据行，减少查询不相关的数据(存储引擎层)。

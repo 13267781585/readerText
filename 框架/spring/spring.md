@@ -265,6 +265,7 @@ public interface DestructionAwareBeanPostProcessor extends BeanPostProcessor {
 7. 销毁前调用 DisposableBean 接口   
 
 8. 自定义销毁方法 destroy   
+https://www.cnblogs.com/zrtqsk/p/3735273.html
 
 ### AOP是在哪里处理的   
 在bean初始化完成后，会调用BeanProcessor接口的postProcessAfterInitialization方法，其中有一个InfrastructureAdvisorAutoProxyCreator实现类是处理aop的，会使用jdk或者cglib生成代理类返回  
@@ -473,3 +474,10 @@ https://ifeve.com/spring-interview-questions-and-answers/
 1. 实现对类依赖关系的解耦，提高类的复用性   
 2. 可以扩展类的生命周期，实现更加复杂的功能
 3. 将类的实例化过程抽象出来，可以减少重复的代码简化开发
+
+### 过滤器和拦截器的区别
+1. 依赖容器不同：过滤器依赖Tomcat容器，只能用于web开发，拦截器依赖于Spring容器，可以用于各种应用
+2. 运行顺序： Filter->Servlet->Interceptor->controller
+3. 执行的时机：过滤器只能在请求处理之前过滤一次，拦截器更加灵活，可以在请求处理之前，之后，抛出异常执行
+4. 处理范围：过滤器可以对所有请求起作用，而拦截器只能对访问到controller的请求起作用，静态资源不经过controller不起作用
+5. 可以获取到数据不同：拦截器可以获取handler上下文数据，过滤器不行
