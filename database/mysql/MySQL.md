@@ -197,4 +197,36 @@ https://blog.csdn.net/qq_38538733/article/details/88902979
 
 
 ### 行数据的最大值
-一条记录占用的最大存储空间是有限制的，除了 BLOB 或者 TEXT 类型的列之外，其他所有的列（不包括隐藏列和记录头信息）占用的字节长度加起来不能超过 65535 个字节(数据页大小16k)。
+一条记录占用的最大存储空间是有限制的，除了 BLOB 或者 TEXT 类型的列之外(根据具体行格式判断，Compact存放前768字节，Dynamic等不存放)，其他所有的列（不包括隐藏列和记录头信息）占用的字节长度加起来不能超过 65535 个字节(数据页大小16k)。
+https://zhuanlan.zhihu.com/p/53413773
+
+### mysql统计表和实际不符
+统计表采用定期同步的方式去落盘数据，会发生统计表(information_schema.tables/show table status等)和实际情况不符的情况。
+* 解决方法：将时间设置为实时更新
+```sql
+-- 全局设置实时更新
+SET GLOBAL information_schema_stats_expiry=0;
+SET @@GLOBAL.information_schema_stats_expiry=0;
+
+-- 会话实时更新
+SET SESSION information_schema_stats_expiry=0;
+SET @@SESSION.information_schema_stats_expiry=0;
+```
+
+### 删除数据的方式
+* delete
+1. delete 是 DML 语句，只删除数据不删除结构，通过一行一行删除并且记录事务日志。
+2. 执行会触发trigger
+3. 删除数据后innodb和myisam都不会立刻释放空间，只会标记记录为删除状态，删除的空间可重用。
+    * myisam
+    删除前
+    ![21](.\image\21.jpg)
+    删除后
+    ![22](.\image\22.jpg)
+    可以看出虽然行数和平均的行数长度都为0，但是数据的长度没有改变，只是作为空间碎片的数据重复使用，并没有释放磁盘空间。
+    * innodb
+    删除前
+    ![23](.\image\23.jpg)
+    删除后
+    ![24](.\image\24.jpg)
+    可以看出虽然行数和平均的行数长度都为0，但是数据的长度没有改变(删除后的空间在innodb引擎不作为空间碎片)。
