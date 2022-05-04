@@ -1,5 +1,8 @@
 ## Compact行格式
 
+#### 行格式分类
+mysql行的格式有Compact，Redundant，Dynamic，Compressed四种，mysql5.5以上的默认compact格式
+
 #### 查询行格式
 ```sql
 show variables like 'innodb_%format';

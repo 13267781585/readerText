@@ -1,8 +1,5 @@
 ## MySQL 
 
-### 行格式
-* mysql行的格式有Compact，Redundant，Dynamic，Compressed四种，mysql5.5以上的默认compact格式
-
 ### 排名内置函数   
 * RANK()  
  并列跳跃排名，并列即相同的值，相同的值保留重复名次，遇到下一个不同值时，跳跃到总共的排名。 1 2 2 4 5  
@@ -214,10 +211,10 @@ SET @@SESSION.information_schema_stats_expiry=0;
 ```
 
 ### 删除数据的方式
-* delete
-1. delete 是 DML 语句，只删除数据不删除结构，通过一行一行删除并且记录事务日志。
+* delete from table_name
+1. delete 是 DML 语句，只删除数据不删除结构，通过一行一行删除并且记录事务日志，可以回滚。
 2. 执行会触发trigger
-3. 删除数据后innodb和myisam都不会立刻释放空间，只会标记记录为删除状态，删除的空间可重用。
+3. 删除数据后innodb和myisam都不会立刻释放空间，只会标记记录为删除状态，删除的空间可重用(可使用optmize table table_name 整理空间碎片)。
     * myisam
     删除前
     ![21](.\image\21.jpg)
@@ -230,3 +227,20 @@ SET @@SESSION.information_schema_stats_expiry=0;
     删除后
     ![24](.\image\24.jpg)
     可以看出虽然行数和平均的行数长度都为0，但是数据的长度没有改变(删除后的空间在innodb引擎不作为空间碎片)。
+4. 执行后不重置 auto_increment
+
+* truncate table table_name
+1. truncate 是 DDL 语句，速度快，执行后无法回滚。
+2. 不触发trigger
+3. innodb和myisam引擎都一致，执行后立即释放磁盘空间
+4. 执行后重置 auto_increment
+
+* drop table table_name
+1. drop 是 DDL 语句
+2. 执行后立即释放磁盘空间
+3. 执行后删除表的数据、结构、触发器等，依赖于该表的存储过程/函数状态变为 invalid 
+
+### 自适应哈希索引(AHI)
+自适应哈希索引是mysql内部一种加快查询的优化措施，由innodb引擎自己判断构建，只能针对等值查询。
+[MySQL AHI 实现解析](https://cloud.tencent.com/developer/article/1004516)
+
