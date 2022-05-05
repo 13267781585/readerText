@@ -17,6 +17,9 @@ show table status
 
 ##### mysql变量配置
 ```sql
+-- 使用index dive的限制 -- 查询区间个数过多 精确统计或者估算  
+eq_range_index_dive_limit
+
 -- innodb 锁等待时间
 innodb_lock_wait_timeout
 
