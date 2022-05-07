@@ -1,8 +1,7 @@
 ## mysql command
-
-##### 查询mysql版本
+##### 登录客户端
 ```sql
-select version();
+mysql -u (用户名) -h (mysql服务所在地址) -P (可选默认3306 指定端口号) -p 数据库
 ```
 
 ##### 运行进程
@@ -12,7 +11,14 @@ show processlist;
 
 ##### 表的数据统计
 ```sql
-show table status
+--表的基本信息
+desc table_name;
+
+-- 数据库中表的统计信息
+show table status;
+
+-- 索引消息
+show index from table_name;
 ```
 
 ##### mysql变量配置
@@ -40,4 +46,17 @@ SET @@GLOBAL.information_schema_stats_expiry=0;
 -- 会话
 SET SESSION information_schema_stats_expiry=0;
 SET @@SESSION.information_schema_stats_expiry=0;
+
+-- 警告条数
+warning_count
+
+-- 警告开关
+sql_notes
+
+-- mysql版本
+version
+
+-- 临时内存表的大小限制
+tmp_table_size
+max_heap_table_size
 ```

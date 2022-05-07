@@ -203,3 +203,124 @@ In most cases, a DISTINCT clause can be considered as a special case of GROUP BY
 * 当表的数据非常大，索引的维护和使用的代价非常大(会产生非常多随机IO)，所以会直接全表扫描，性能非常差，可以考虑使用分区，将数据分类存放，在查询时只需要
 搜索对应分区
 
+### in的优化
+in子查询会在物化表、exists、semi连接等方案中选取成本最小的执行
+```sql
+CREATE TABLE single_table (
+ id INT NOT NULL AUTO_INCREMENT,
+ key1 VARCHAR(100),
+ key2 INT,
+ key3 VARCHAR(100),
+ key_part1 VARCHAR(100),
+ key_part2 VARCHAR(100),
+ key_part3 VARCHAR(100),
+ common_field VARCHAR(100),
+ PRIMARY KEY (id),
+ KEY idx_key1 (key1),
+ UNIQUE KEY idx_key2 (key2),
+ KEY idx_key3 (key3),
+ KEY idx_key_part(key_part1, key_part2, key_part3)
+) Engine=InnoDB CHARSET=utf8;
+
+-- 不相关子查询 子查询和外层无关联
+SELECT * FROM single_table s1 WHERE key1 IN (SELECT common_field FROM single_table s2 WHERE key3 < '2');
+
+ -- 相关子查询  子查询和外层有关联
+ SELECT * FROM single_table s1 WHERE key1 IN (SELECT key3 FROM single_table s2 WHERE s1.key2 = s2.key2);
+```
+* 转化为exists(5.5之前)
+```sql
+-- 假如 key3 上有索引，可以使用索引查询
+select s1.* from single_table s1 exists (select 1 from single_table s2 where s2.common_field = s1.key1 and key3 < '2');
+
+select s1.* from single_table s1 exists (select 1 from single_table s2 where s1.key1 = s2.key3 and s1.key2 = s2.key2);
+```
+
+* 物化表
+只适用于不相关子查询，也就是子查询和外层查询没有关联。将子查询的结果不直接作为外层查询的参数，而是放入临时表，并执行下列操作：
+    * 去重
+    * 当表的大小少于设置的 tmp_table_size 或者 max_heap_table_size，建立基于内存的MEMOEY表并建立哈希索引；若超过，则写入磁盘，并建立B+树索引。
+然后将使用物化表和外层表做内连接查询数据。
+
+* 半连接(semi join)
+半连接用于优化in子查询，语义是驱动表中一条数据在被驱动表中找到一条满足on条件记录时加入结果集，且只返回驱动表的数据(去重)。该模式适用于不相关和相关子查询。 
+    * 不相关子查询
+
+    * 因为驱动表中的数据在被驱动表中可能有多条符合条件的记录，如何对重复的记录进行去重呢？
+        1. Table pullout （子查询中的表上拉）
+    当子查询中只有主键或者唯一索引查询条件时，主键和唯一索引的性质可以达到去重的条件。
+            ```sql
+            -- key2 唯一索引
+            SELECT s1.* FROM single_table s1 WHERE key2 IN (SELECT key2 FROM single_table s2 WHERE key3 < '500');
+            ```
+            * 执行计划
+            ![45](./image/45.jpg)
+            * 优化sql(直接优化为内连接)
+            ![46](./image/46.jpg)
+
+        2. DuplicateWeedout execution strategy （重复值消除）
+        建立临时表，将记录的id作为临时表的主键，在将记录放入结果集之前，将记录主键放入临时表，添加失败则说明该结果集中存在该记录，不进行放入。
+            ```sql
+            CREATE TABLE tmp (
+                id PRIMARY KEY
+            );
+            ```
+
+        3. LooseScan execution strategy （松散索引扫描）
+            ```sql
+            -- key1 索引
+            SELECT * FROM single_table s1 WHERE key3 IN (SELECT key1 FROM single_table s2 WHERE key1 > 'a' AND key1 < 'b');
+            ```
+            通过扫描s2表的key1索引获取不重复的数值到s1中查询是否有符合的记录(正常是s1拿数据到s2中查询，该策划采用s2获取不重复数据到s1中查询)。
+            ![44](./image/44.jpg)
+            * 执行计划
+            ![47](./image/47.jpg)
+            * 优化sql
+            ![48](./image/48.jpg)
+
+        4. Semi-join Materialization execution strategy
+            ```sql
+            SELECT * FROM single_table s1 WHERE common_field IN (SELECT common_field FROM single_table s2 WHERE key1 < '1');
+            ```
+            外层查询common_field字段无索引，子查询需要回表，物化不相关子查询(不重复)，再进行连接。
+            * 执行计划
+            ![51](./image/51.jpg)
+            * 优化sql
+            ![52](./image/52.jpg)
+
+        5. FirstMatch execution strategy （首次匹配）
+            ```sql
+            SELECT * FROM single_table s1 WHERE key3 IN (SELECT common_field FROM single_table s2 WHERE common_field < '1');
+            ```
+            子查询common_field字段无索引，外层查询key3有索引。外层s2拿一条数据到s1进行匹配，满足条件放入结果集并停止这条数据的匹配进行下一条数据。
+            * 执行计划
+            ![50](./image/50.jpg)
+            * 优化sql
+            ![51](./image/51.jpg)
+    * 适用semi优化的情况
+        1. 该子查询必须是和 IN 语句组成的布尔表达式，并且在外层查询的 WHERE 或者 ON 子句中出现。
+            ```sql
+            SELECT * FROM s1 
+            WHERE key1 NOT IN (SELECT common_field FROM s2 WHERE key3 = 'a');
+
+            SELECT key1 IN (SELECT common_field FROM s2 WHERE key3 = 'a') FROM s1 ;
+            ```
+        2. 外层查询也可以有其他的搜索条件，只不过和 IN 子查询的搜索条件必须使用 AND 连接起来。
+            ```sql
+            SELECT * FROM s1 
+                WHERE key1 IN (SELECT common_field FROM s2 WHERE key3 = 'a')
+            OR key2 > 100;
+            ```
+        3. 该子查询必须是一个单一的查询，不能是由若干查询由 UNION 连接起来的形式。
+            ```sql
+            SELECT * FROM s1 WHERE key1 IN (
+                SELECT common_field FROM s2 WHERE key3 = 'a' 
+                UNION
+                SELECT common_field FROM s2 WHERE key3 = 'b'
+                    );
+            ```
+        4. 该子查询不能包含 GROUP BY 或者 HAVING 语句或者聚集函数。
+
+
+
+转载自《MySQL是怎样运行的：从根儿上理解MySQL》
