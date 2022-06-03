@@ -1,34 +1,82 @@
 ### 慢查询优化经验
 
 ### 执行计划
+```sql
+CREATE TABLE single_table (
+ id INT NOT NULL AUTO_INCREMENT,
+ key1 VARCHAR(100),
+ key2 INT,
+ key3 VARCHAR(100),
+ key_part1 VARCHAR(100),
+ key_part2 VARCHAR(100),
+ key_part3 VARCHAR(100),
+ common_field VARCHAR(100),
+ PRIMARY KEY (id),
+ KEY idx_key1 (key1),
+ UNIQUE KEY idx_key2 (key2),
+ KEY idx_key3 (key3),
+ KEY idx_key_part(key_part1, key_part2, key_part3)
+) Engine=InnoDB CHARSET=utf8;
+```
 * id 序列化标识   
+给每个查询分配一个唯一标识符，连接查询的标识符一致。
 * select_type select查询对应的类型   
-1. SIMPLE：简单查询，不包含 UNION 或者子查询。
-2. PRIMARY：查询中如果包含子查询或其他部分，外层的 SELECT 将被标记为 PRIMARY。
-3. SUBQUERY：子查询中的第一个 SELECT。 
-4. UNION：在 UNION 语句中，UNION 之后出现的 SELECT。
-5. DERIVED：在 FROM 中出现的子查询将被标记为 DERIVED。
-6. UNION RESULT：UNION 查询的结果。
+    * SIMPLE：简单查询，不包含 UNION 或者子查询。
+    * PRIMARY：查询中如果包含子查询、union、union all，最左边的 SELECT 将被标记为 PRIMARY。
+    ![53](./image/53.jpg)
+    * UNION：在 UNION 或者 UNION ALL 语句中，除了最左边出现的SELECT。
+    * UNION RESULT：择使用临时表来完成 UNION 查询的去重工作，针对该临时表的查询的 select_type 就是 UNION RESULT。
+    * DEPENDENT UNION：在包含 UNION 或者 UNION ALL 的大查询中，如果各个小查询都依赖于外层查询的话，那除了最左边的那个小查询之外，其余的小查询的 select_type 的值就是 DEPENDENT UNION 。
+        * 和外层有关联
+        ![56](./image/56.jpg)
+        ![57](./image/57.jpg)
+        * 和外层无关联
+        ![58](./image/58.jpg)
+    * SUBQUERY：包含子查询的查询语句不能够转为对应的 semi-join 的形式，并且该子查询是不相关子查询，并且查询优化器决定采用将该子查询物化的方案来执行该子查询时，该子查询的第一个 SELECT 关键字代表的那个查
+询的 select_type 就是 SUBQUERY。
+    ![54](./image/54.jpg)
+    * DEPENDENT SUBQUERY：包含子查询的查询语句不能够转为对应的 semi-join 的形式，并且该子查询是相关子查询，则该子查询的第一个 SELECT 关键字代表的那个查询的 select_type 就是 DEPENDENT SUBQUERY。
+    ![55](./image/55.jpg)
+    * DERIVED：查询的表使用物化的方式生成的。
+    ![59](./image/59.jpg)
+    * MATERIALIZED：包含有子查询，采用物化表的形式执行后在进行连接。
+    ![60](./image/60.jpg)
+
 * table 表名   
 * type 描述数据匹配的类型  
-1. system：如果表使用的引擎对于表行数统计是精确的(如：MyISAM)，且表中只有一行记录的情况下，访问方法是 system ，是 const 的一种特例。
-2. const：表中最多只有一行匹配的记录，一次查询就可以找到，常用于使用主键或唯一索引的所有字段作为查询条件(唯一索引不限制NULL，对于字段NULL的查询不是const)。
-3. eq_ref：当连表查询时，前一张表的行在当前这张表中只有一行与之对应。是除了 system 与 const 之外最好的 join 方式，常用于使用主键或唯一索引的所有字段作为连表条件。
-4. ref：使用普通索引作为查询条件，查询结果可能找到多个符合条件的行。
-5. index_merge：当查询条件使用了多个索引时，表示开启了 Index Merge 优化，此时执行计划中的 key 列列出了使用到的索引。
-6. range：对索引列进行范围查询，执行计划中的 key 列表示哪个索引被使用了。
-7. index：查询遍历了整棵索引树，与 ALL 类似，只不过扫描的是索引，而索引一般在内存中，速度更快(通常是条件无法命中索引，但是索引列种含有该值，可以通过遍历索引树得到结果，比遍历主索引树代价小)。
-```sql
--- index(value1,value2,value)
-select * from table_name where value2 = 's'
--- 无法命中索引，使用index索引树遍历，代价小 
-```
-8. ALL：全表扫描。
-9. ref_or_null 搜索二级索引并且想把NULL的列也查询出来(index = 1 or index is null)
+    * system：如果表使用的引擎对于表行数统计是精确的(如：MyISAM和MEMORY)
+    * const：表中最多只有一行匹配的记录，一次查询就可以找到，常用于使用主键或唯一索引的所有字段作为查询条件(唯一索引不限制NULL，对于字段NULL的查询不是const)。
+    * eq_ref：当连表查询时，使用主键或唯一索引的所有字段作为等值查询，匹配记录数量最多一条。
+    * ref：使用普通索引作为查询条件，查询结果可能找到多个符合条件的行。
+    * ref_or_null：使用二级索引作为连接条件且允许字段为null(index = '' or index = null)
+    * index_merge：当查询条件使用了多个索引时，表示开启了 Index Merge 优化，此时执行计划中的 key 列列出了使用到的索引。
+    * unique_subquery：子查询优化为exists，且子查询可以使用到主键进行等值匹配。
+    ![61](./image/61.jpg)
+    ![62](./image/62.jpg)
+    * index_subquery：子查询优化为exists，且子查询可以使用到二级索引进行等值匹配。
+    ![63](./image/63.jpg)
+    ![64](./image/64.jpg)
+    * range：对索引列进行范围查询，执行计划中的 key 列表示哪个索引被使用了。
+    * index：查询遍历了整棵索引树，与 ALL 类似，只不过扫描的是索引，而索引一般在内存中，速度更快(通常是条件无法命中索引，但是索引列种含有该值，可以通过遍历索引树得到结果，比遍历主索引树代价小)。
+    ```sql
+    -- 无法使用idx_key_part(key_part1, key_part2, key_part3) 索引 但是遍历二级索引树的代价比聚簇索引小
+    select key_part2 from single_table where key_part3 = '1';
+    ```
+    * ALL：全表扫描。
 * possible_keys 可能用到的索引   
 * key 实际用到的索引   
-* key_len 用到的索引的长度  
-* rows 需要读取的行数  
+* key_len 用到的索引的最大长度长度，由一下决定：
+    * 固定长度索引列，长度是固定
+    * 变长类型来说，取决于使用的字符集，utf-8一个字符占用3字节，还需要2字节的变长字符长度记录。
+    * 允许存放NULL，需要额外1字节标记   
+例如：varchar(100) 使用utf-8编码时，需要 100*3+1(NULL)+2=303
+* rows 预计需要扫描的行数
+    * 全表：表的行数
+    * 索引：索引需要扫描的行数
+* filtered rows经过条件过滤的百分比
+![65](./image/65.jpg)
+查询优化器打算把 s1 当作驱动表， s2 当作被驱动表。可以看出驱动表 s1 表的执行计划的 rows 列为 9688 ， filtered 列为 10.00 ，这意味着驱动表 s1 满足common_field = '500' 的扇出值就是 9688 × 10.00% = 968.8 ，这说明还要对被驱动表执行大约 968 次查询。
+
 * Extra 额外信息  
 1. Using filesort    
 在排序时使用了外部的排序(不代表文件排序)，没有用到表内索引进行排序。filesort使用的算法是QuickSort，即对需要排序的记录生成元数据进行分块排序，然后再使用mergesort方法合并块。
