@@ -380,9 +380,9 @@ again:
  b := (*bmap)(add(h.buckets, bucket*uintptr(t.bucketsize)))
  top := tophash(hash)
 
- var inserti *uint8
- var insertk unsafe.Pointer
- var elem unsafe.Pointer
+ var inserti *uint8           //要插入的cell位置的tophash
+ var insertk unsafe.Pointer   //要插入的key的位置
+ var elem unsafe.Pointer      //要插入的value的位置
 bucketloop:
  for {
   for i := uintptr(0); i < bucketCnt; i++ {
@@ -435,7 +435,7 @@ bucketloop:
   elem = add(insertk, bucketCnt*uintptr(t.keysize))
  }
 
- // store new key/elem at insert position
+ // 拷贝一个数据放到对应位置
  if t.indirectkey() {
   kmem := newobject(t.key)
   *(*unsafe.Pointer)(insertk) = kmem
@@ -714,15 +714,26 @@ func f64hash(p unsafe.Pointer, h uintptr) uintptr {
 * 扩容
 
 ### 为什么go中map不使用红黑树提高搜索效率？
-提升考虑的方式不同。java采用红黑树的方式提高搜索的效率，go则是在每一个节点中存放八个数据，每次进行搜索都是顺序查询，不像红黑树一样频繁根据引用查找下一个节点。
+提升考虑的方式不同。java采用红黑树的方式提高搜索的效率，go则是在每一个节点中存放八个数据，每次进行搜索都是顺序查询，不像红黑树一样频繁根据引用查找下一个节点。   
+
+### map中没有缩容的操作
+map没有提供缩容的操作，也就是说map只会不停的增长，不会因为数据变少而减少容量，这就会导致一个问题，当map中存放上百万的数据后，即使删除了数据，map也会占用很大的内存空间。解决办法：
+* 定时重建map，将原来的数据copy到新的map中
+* 使用指针作为value   
+  就算map容量非常大，但是指针占用的空间是固定的，可以减少内存损耗。   
+[Maps and Memory Leaks in Go](https://teivah.medium.com/maps-and-memory-leaks-in-go-a85ebe6e7e69)   
+[学习了！GoMap 会内存泄露？？](https://mp.weixin.qq.com/s/TcYo3VWpM3uDpya1XXrX3w)
+
+
+### extra *mapextra 的意义
+当map的key/value不包含指针且size小于128byte时，会标记这个map，在gc时不需要扫描bucket，减少gc的压力。   
+但是bucket中的overflow是一个指针类型，生成函数会将overflow的类型转化为uintptr，而uintptr虽然是地址，但不会被gc认为是指针，指向的数据有被回收的风险。
+此时为保证其中的overflow指针指向的数据存活，就用mapextra结构指向了这些buckets，这样bmap有被引用就不会被回收了。
 ### 根据 key 的不同类型，编译器还会将查找、插入、删除的函数用更具体的函数替换，如何做到？
 
-### map中为什么没有缩容的操作
 
 
 
-
-
-本文是以下文章的读书笔记：
+本文是以下文章的读书笔记：   
 [Go 语言 map 的底层实现完整剖析](https://zhuanlan.zhihu.com/p/406751292)
 [深度解密Go语言之map](https://mp.weixin.qq.com/s/Jq65sSHTX-ucSG8TlI5Zxg)
