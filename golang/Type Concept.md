@@ -71,4 +71,20 @@ MyIntSlice → []MyInt stop []int
 AgeSlice → []Age x []MyInt stop []int
 Ages → AgeSlice → []Age stop []MyInt → []int
 ```
+## 类型定义和类型别名
+* 类型定义申明了一种新的类型，除了内存分布和原类型一致，其他没有关系，可以为新类型声明新的方法
+* 类型别名本质上只是原类型的一个替换，和原类型没有区别
+```go
+type MyInt int
+type IntAlias = int
+
+func main() {
+	myInt := MyInt(1)
+	intAlias := IntAlias(1)
+	fmt.Printf("%T %v\n", myInt, myInt) //main.MyInt 1
+	fmt.Printf("%T %v\n", intAlias, intAlias)//int 1
+}
+```
+
+
 [Go Type System Overview](https://gfw.go101.org/article/type-system-overview.html)

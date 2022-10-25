@@ -1,8 +1,8 @@
 ## Go协程调度器
 
-g->goroutine
-m->thread 核心线程
-p->processor
+g->goroutine   
+m->thread 核心线程  
+p->processor   
 go的gmp中协程：核心线程=M:N
 
 #### 协程的优势
