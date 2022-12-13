@@ -5,11 +5,11 @@
 * defer执行的延迟函数如果发生panic，不会干扰到其他延迟函数的执行(一个资源关闭出错不会导致其他资源的关闭)
 
     ```go
-        func main() {
+    func main() {
         defer fmt.Println("a")
         defer func() { panic("111") }()
         defer fmt.Println("b")
-        }
+    }
 
     b
     a
@@ -18,14 +18,13 @@
 
 * defer 的规则
   * 延迟函数的参数在defer语句出现时就已经确定下来
-
     ```go
-        func a() {
-            i := 0
-            defer fmt.Println(i)
-            i++
-            return
-        }
+    func a() {
+        i := 0
+        defer fmt.Println(i)
+        i++
+        return
+    }
     ```
 
     defer语句中的fmt.Println()参数i值在defer出现时就已经确定下来，实际上是拷贝了一份。后面对变量i的修改不会影响fmt.Println()函数的执行，仍然打印"0"。
@@ -53,7 +52,7 @@
     ```
 
   * 延迟函数执行按后进先出顺序执行
-  * 延迟函数可能操作主函数的具名返回值
+  * 延迟函数可能操作主函数的具名返回值   
     return不是一个原子操作，先将返回值存放到栈中，再执行延迟函数，最后跳转返回，所以延迟函数可能会影响返回值
     * 主函数拥有匿名返回值，返回字面值
 
@@ -99,7 +98,7 @@
 
 #### 原理
 
-defer是通过_defer结构体实现的，结构体中有_defer的指针指向下一个延迟函数，当增加延迟函数，会生成_defer结构体插入链表头部，最后执行也是从链表头部开始，所以表现为先进后执行。代码编译后新增延迟函数处会插入deferpro()函数，最后在ret指令(返回值)之前调用deferreturn函数执行延迟函数。
+defer是通过_defer结构体实现的，结构体中有_defer的指针指向下一个延迟函数，当增加延迟函数，会生成_defer结构体插入链表头部，最后执行也是从链表头部开始，所以表现为先进后执行。代码编译后新增延迟函数处会插入deferproc()函数，最后在ret指令(返回值)之前调用deferreturn函数执行延迟函数。
 
 ```go
 //延迟函数结构体
@@ -125,15 +124,8 @@ type _defer struct {
 func deferproc(fn func()) {
 // 获取当前协程
  gp := getg()
- if gp.m.curg != gp {
-  // go code on the system stack can't defer
-  throw("defer on system stack")
- }
 //新建延迟函数结构
  d := newdefer()
- if d._panic != nil {
-  throw("deferproc: d.panic != nil after newdefer")
- }
  //插入链表头结点
  d.link = gp._defer
  gp._defer = d
@@ -187,7 +179,6 @@ func deferreturn() {
 * 使用defer需要注册和在函数返回之前执行延迟函数，相比直接调用函数，增了多更多的步骤
 * 多个defer需要更多的内存空间记录信息
 * defer函数只有在函数返回前才会被执行，若函数执行时间较长或者并发量大，会造成积累非常多的延迟函数
-* 有些资源在使用完毕后及时关闭比较合适，有利于资源被其他有需要的地方再利用，而不是延迟到函数结束再进行关闭
 * defer结构体是分配在堆上，执行时copy到调用者的栈中执行
 * defer延迟函数采用链表存放，链表节点在内存中散列分布，效率低
 
@@ -198,7 +189,7 @@ func deferreturn() {
 
     2. defer结构体采用链表连接，效率低
 
-* 1.13
+* 1.13   
 将defer结构体分配到栈，减少堆的分配(不适用在for中的defer函数)，性能提升30%
 
 ```go
@@ -232,15 +223,27 @@ ret:
 
 ```
 
-* 1.14(延迟函数在栈中如何存放和定位的？)
-优化了分配堆的缺点，使用open coded的方式，将延迟函数以普通函数调用的方式在主函数返回之前调用，省去了创建_defer结构体和链表的开销，在正常情况下延迟函数会被调用，当发生panic时，程序会终止panic后续逻辑执行，这是会panic程序会通过扫描栈的方式保证延迟函数正确执行(如何扫描)，因此优化后defer的性能提升但是panic的处理过程变慢了。在下列条件中会禁止使用open coded的方法:
+* 1.14(延迟函数在栈中如何存放和定位的？)   
+优化了分配堆的缺点，使用 open coded 的方式，将延迟函数以普通函数调用的方式在主函数返回之前调用，省去了创建 _defer 结构体和链表的开销，在正常情况下延迟函数会被调用，当发生panic时，程序会终止panic后续逻辑执行，这是因为 panic程序 会通过扫描栈的方式保证延迟函数正确执行(如何扫描)，因此优化后defer的性能提升但是panic的处理过程变慢了。在下列条件中会禁止使用 open coded 的方法:
   * defer数量 <= 8个
 
   * return数量 * defer数量 <= 15
 
-  * defer外部无循环
+  * defer外部无循环(可以用匿名函数优化)
+    ```go
+   	for {
+		//...
+		defer func() {}()
+	}
 
-  * gcflags没有使用-N来禁止编译器优化
+    for{
+        func(){
+            //...
+		    defer func() {}()
+        }()
+    }
+    ```
+  * gcflags使用-N来禁止编译器优化
 
 ```go
 func A(i int) {
@@ -380,7 +383,7 @@ func (s *state) stmt(n ir.Node) {
     }
 ```
 
-[go语言系列7 - Go defer优化之open_coded](https://www.modb.pro/db/57017)
-[golang defer原理](https://blog.csdn.net/qq_49723651/article/details/121509818)
-[Go defer实现原理剖析](https://blog.csdn.net/Tybyqi/article/details/83827140)
+[go语言系列7 - Go defer优化之open_coded](https://www.modb.pro/db/57017)  
+[golang defer原理](https://blog.csdn.net/qq_49723651/article/details/121509818)   
+[Go defer实现原理剖析](https://blog.csdn.net/Tybyqi/article/details/83827140)  
 [1.14版本defer性能大幅度提升，内部实现了开放编码优化](https://www.q578.com/s-5-2421209-0/)
