@@ -62,10 +62,10 @@ CREATE TABLE single_table (
     -- 无法使用idx_key_part(key_part1, key_part2, key_part3) 索引 但是遍历二级索引树的代价比聚簇索引小
     select key_part2 from single_table where key_part3 = '1';
     ```
-    * ALL：全表扫描。
+    * ALL：全表扫描
 * possible_keys 可能用到的索引   
 * key 实际用到的索引   
-* key_len 用到的索引的最大长度长度，由一下决定：
+* key_len 用到的索引的最大长度长度，由以下决定：
     * 固定长度索引列，长度是固定
     * 变长类型来说，取决于使用的字符集，utf-8一个字符占用3字节，还需要2字节的变长字符长度记录。
     * 允许存放NULL，需要额外1字节标记   
@@ -107,7 +107,7 @@ MySQL 需要创建临时表来存储查询的结果，临时表可能是内存�
 
 #### 使用where条件的三种方式
 3. Using index：表明查询使用了覆盖索引，不用回表，查询效率非常高。
-4. Using index condition：表示查询命中索引后，如果where中还有和索引相关的判断条件，会将条件下推到存储索引层，对索引查询出的数据进行再一次的过滤再回表查询数据行，减少查询不相关的数据(存储引擎层)。
+4. Using index condition：表示查询命中索引后，如果where中还有和索引相关的判断条件，会将条件下推到存储索引层，对索引查询出的数据进行再一次的过滤再回表查询数据行，减少回表的数据量(存储引擎层)。
 5. Using where：表明查询在没有走索引或者走了索引还有索引列外的条件时用where过滤数据(服务器层)。
 
 6. Using join buffer (Block Nested Loop)：连表查询的方式，表示当被驱动表的没有使用索引的时候，MySQL 会先将驱动表读出来放到 join buffer 中，再遍历被驱动表与驱动表进行查询。
@@ -205,7 +205,7 @@ select a,b,c from table_name name inner join (select id from table_name order by
 ii. 利用索引列连续的特点进行快速查询
 ```sql
 -- 查询的列中有索引列且是连续的，在每次查询后可以记录下上次的 索引值，作为范围查询条件
-selelct  a,b,c from table_name where a between m and n;
+select  a,b,c from table_name where a between m and n;
 ```
 iii. 汇总表
 如果sql的操作比较繁杂，优化困难，可以建立一张汇总表，每次查询可以直接获取数据不需要额外总计，在数据变更时利用mq进行触发统计
@@ -284,18 +284,18 @@ select s1.* from single_table s1 exists (select 1 from single_table s2 where s2.
 select s1.* from single_table s1 exists (select 1 from single_table s2 where s1.key1 = s2.key3 and s1.key2 = s2.key2);
 ```
 
-* 物化表
+* 物化表  
 只适用于不相关子查询，也就是子查询和外层查询没有关联。将子查询的结果不直接作为外层查询的参数，而是放入临时表，并执行下列操作：
     * 去重
     * 当表的大小少于设置的 tmp_table_size 或者 max_heap_table_size，建立基于内存的MEMOEY表并建立哈希索引；若超过，则写入磁盘，并建立B+树索引。
 然后将使用物化表和外层表做内连接查询数据。
 
-* 半连接(semi join)
+* 半连接(semi join)  
 半连接用于优化in子查询，语义是驱动表中一条数据在被驱动表中找到一条满足on条件记录时加入结果集，且只返回驱动表的数据(去重)。该模式适用于不相关和相关子查询。 
     * 不相关子查询
 
     * 因为驱动表中的数据在被驱动表中可能有多条符合条件的记录，如何对重复的记录进行去重呢？
-        1. Table pullout （子查询中的表上拉）
+        1. Table pullout （子查询中的表上拉）  
     当子查询中只有主键或者唯一索引查询条件时，主键和唯一索引的性质可以达到去重的条件。
             ```sql
             -- key2 唯一索引
@@ -306,7 +306,7 @@ select s1.* from single_table s1 exists (select 1 from single_table s2 where s1.
             * 优化sql(直接优化为内连接)
             ![46](./image/46.jpg)
 
-        2. DuplicateWeedout execution strategy （重复值消除）
+        2. DuplicateWeedout execution strategy （重复值消除）   
         建立临时表，将记录的id作为临时表的主键，在将记录放入结果集之前，将记录主键放入临时表，添加失败则说明该结果集中存在该记录，不进行放入。
             ```sql
             CREATE TABLE tmp (

@@ -241,6 +241,6 @@ SET @@SESSION.information_schema_stats_expiry=0;
 3. 执行后删除表的数据、结构、触发器等，依赖于该表的存储过程/函数状态变为 invalid 
 
 ### 自适应哈希索引(AHI)
-自适应哈希索引是mysql内部一种加快查询的优化措施，由innodb引擎自己判断构建，只能针对等值查询。
+自适应哈希索引是mysql内部一种加快查询的优化措施，由innodb引擎自己判断构建，只能针对等值查询。   
 [MySQL AHI 实现解析](https://cloud.tencent.com/developer/article/1004516)
 
