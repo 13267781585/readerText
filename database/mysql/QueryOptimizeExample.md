@@ -178,8 +178,9 @@ on cd.sendername = u.user_account_num where chatid = 4535435
 order by cd.cd_id asc
 ```
 
-解决：1. 将连接操作拆分为两个sql执行   
-2.根据chatid 在chatinfo_detail查出数据   
+解决：
+1. 将连接操作拆分为两个sql执行   
+2. 根据chatid 在chatinfo_detail查出数据   
 根据步骤1查出的数据,去重找出sendername   
 拿2的sendername在user表查出user_name   
 在应用里做sendername的加工  

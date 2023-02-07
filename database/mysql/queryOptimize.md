@@ -369,6 +369,9 @@ select s1.* from single_table s1 exists (select 1 from single_table s2 where s1.
             ```
         4. 该子查询不能包含 GROUP BY 或者 HAVING 语句或者聚集函数。
 
-
+### 分析系统优化方案
+* 数据分离：监听业务数据库binlog，拉取数据(架构可以采用一主多从或树状结构(根据数据时效性选择数据库节点分析，实效性要求大层数低))
+* 选型：列式存储数据库
+* 处理方式：预先计算(物化视图)
 
 转载自《MySQL是怎样运行的：从根儿上理解MySQL》
