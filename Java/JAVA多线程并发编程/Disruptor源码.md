@@ -6,7 +6,7 @@
 
 ## 知识点
 ### CPU自旋优化
-JDK9以上增加了onSpinWait方法，在线程在自旋等待某些条件时，可以提示CPU将资源更多分配给其他线程，防止长时间空旋占用过多的资源(当进程采用自旋时，建议将进程和特定的CPU进行绑定，防止该进程占用过多的cpu资源去等待条件的完成)。
+JDK9以上增加了onSpinWait方法，线程在自旋等待某些条件时，可以提示CPU将资源更多分配给其他线程，防止长时间空旋占用过多的资源(当进程采用自旋时，建议将进程和特定的CPU进行绑定，防止该进程占用过多的cpu资源去等待条件的完成)。
 ```java
     // ThreadHints.onSpinWait();
     public final class ThreadHints
@@ -203,7 +203,11 @@ JDK9以上增加了onSpinWait方法，在线程在自旋等待某些条件时，
 
     /*
         barrierSequences 依赖消费者的消费进度(A->B，本次B的创建，传入A的消费进度)
-        eventHandlers 消费者
+        eventHandlers 消费者数组
+        需要做的事情：
+        1. 根据依赖的消费者生成本次消费者交互的屏障
+        2. 封装消费者信息+保存每一个消费者
+        3. 维护最慢消费者的进度列表(生产者需要判断)
     */
     EventHandlerGroup<T> createEventProcessors(
         final Sequence[] barrierSequences,
@@ -241,6 +245,7 @@ JDK9以上增加了onSpinWait方法，在线程在自旋等待某些条件时，
     //AbstractSequencer
     public SequenceBarrier newBarrier(Sequence... sequencesToTrack)
     {
+        //在多生产者模式下，cursor是已分配的最大位置(不一定已经发布)，后续会校验这个条件
         return new ProcessingSequenceBarrier(this, waitStrategy, cursor, sequencesToTrack);
     }
 
@@ -255,7 +260,7 @@ JDK9以上增加了onSpinWait方法，在线程在自旋等待某些条件时，
         //阻塞策略
         this.waitStrategy = waitStrategy;
         // SingleProducerSequencer-> 已被分配且发布的最大位置
-        // MultiProducerSequencer-> 
+        // MultiProducerSequencer->  已被分配最大位置
         this.cursorSequence = cursorSequence;
         if (0 == dependentSequences.length)
         {
@@ -410,7 +415,11 @@ JDK9以上增加了onSpinWait方法，在线程在自旋等待某些条件时，
         throws AlertException, InterruptedException, TimeoutException
     {
         checkAlert();
-
+        /*
+            因为多生产者传入的cursor是已分配的最大位置，会存在有些位置还没有发布
+            waitStrategy.waitFor 没有做这个校验，因此会在sequencer.getHighestPublishedSequence
+            校验这个规则，防止消费了还没有发布的数据
+        */
         long availableSequence = waitStrategy.waitFor(sequence, cursorSequence, dependentSequence, this);
 
         if (availableSequence < sequence)
@@ -419,6 +428,34 @@ JDK9以上增加了onSpinWait方法，在线程在自旋等待某些条件时，
         }
 
         return sequencer.getHighestPublishedSequence(sequence, availableSequence);
+    }
+
+    //SingleProducerSequencer
+    public long getHighestPublishedSequence(long lowerBound, long availableSequence)
+    {
+        return availableSequence;
+    }
+
+    //MultiProducerSequencer
+    public long getHighestPublishedSequence(long lowerBound, long availableSequence)
+    {
+        for (long sequence = lowerBound; sequence <= availableSequence; sequence++)
+        {
+            if (!isAvailable(sequence))
+            {
+                return sequence - 1;
+            }
+        }
+
+        return availableSequence;
+    }
+    //判断这个位置是否已经发布
+    public boolean isAvailable(long sequence)
+    {
+        int index = calculateIndex(sequence);
+        int flag = calculateAvailabilityFlag(sequence);
+        long bufferAddress = (index * SCALE) + BASE;
+        return UNSAFE.getIntVolatile(availableBuffer, bufferAddress) == flag;
     }
 ```
 
