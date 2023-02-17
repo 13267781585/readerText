@@ -276,5 +276,5 @@ SET @@SESSION.information_schema_stats_expiry=0;
 * Hbase
 * Druid
 * Cassandra
-* clickhouse
+* clickhouse   
 [列存数据库，不只是列式存储](https://cn.kyligence.io/blog/%E5%88%97%E5%AD%98%E6%95%B0%E6%8D%AE%E5%BA%93%EF%BC%8C%E4%B8%8D%E5%8F%AA%E6%98%AF%E5%88%97%E5%BC%8F%E5%AD%98%E5%82%A8/)
