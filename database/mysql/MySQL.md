@@ -204,3 +204,40 @@ SET @@SESSION.information_schema_stats_expiry=0;
 
 ## 锁错误排查方式
 ![68](.\image\68.jpg)
+
+## 基本概念
+* 聚簇索引
+* 索引覆盖
+* 索引下推
+* MMR
+![87](.\image\87.jpg)
+![88](.\image\88.jpg)
+
+
+## mysql问题合集
+* char和varchar
+* datetime和timestamp
+* uuid适合作为主键吗？
+* 索引原则
+* mysql索引数据结果选型
+* 为什么用自增id作为主键
+* 平衡二叉树和红黑色
+* 数据库连接使用后不关闭的弊端？
+* 短索引
+* SQL注入
+* Statement和PrepareStatement
+* mysql常见引擎
+* 三大范式
+![80](.\image\80.jpg)
+![81](.\image\81.jpg)
+![82](.\image\82.jpg)
+![83](.\image\83.jpg)
+![84](.\image\84.jpg)
+![85](.\image\85.jpg)
+![86](.\image\86.jpg)
+
+## 查询语句执行过程
+![89](.\image\89.jpg)
+
+## 主从同步
+![90](.\image\90.jpg)
