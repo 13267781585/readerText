@@ -241,3 +241,6 @@ SET @@SESSION.information_schema_stats_expiry=0;
 
 ## 主从同步
 ![90](.\image\90.jpg)
+
+## 正排索引和倒排索引
+* 正排索引以文档为关键字，倒排索引以字或词为索引
