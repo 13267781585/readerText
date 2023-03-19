@@ -368,6 +368,10 @@ sds sdscpylen(sds s, const char *t, size_t len) {
 }
 ```
 
+## API和复杂度
+<img src="./image/14.png" alt="14" />   
+<img src="./image/15.png" alt="15" />   
+
 ## Q&A 
 ### SDS 和 C字符串的区别
 * C字符串不记录长度造成的风险   
