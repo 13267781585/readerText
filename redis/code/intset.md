@@ -151,3 +151,12 @@ intset *intsetRemove(intset *is, int64_t value, int *success) {
     return is;
 }
 ```
+
+## API和复杂度
+<img alt="11" src="./image/11.png"/>
+
+## Q&A
+### 升级机制的好处
+<img alt="10" src="./image/10.png"/>  
+
+摘抄自《Redis设计与实现》 

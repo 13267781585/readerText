@@ -1,7 +1,7 @@
 # ziplist源码
 >* ziplist是为了解决小数据使用quicklist浪费内存的问题(节点指针占用空间远远大于数据)  
 >* ziplist没有预容量，每次增删都设计内存重新分配   
->* 有小概率会有连锁操作的风险
+>* 有小概率会有连锁更新的风险
 
 ## 构成
 <img alt="2" src="./image/2.png"/>
@@ -446,7 +446,7 @@ unsigned char *__ziplistInsert(unsigned char *zl, unsigned char *p, unsigned cha
         ZIPLIST_TAIL_OFFSET(zl) = intrev32ifbe(p-zl);
     }
 
-    //插入操作可能会导致后续节点发生连锁扩容反应
+    //插入操作可能会导致后续节点发生连锁更新反应
     if (nextdiff != 0) {
         offset = p-zl;
         zl = __ziplistCascadeUpdate(zl,p+reqlen);
@@ -466,7 +466,235 @@ unsigned char *__ziplistInsert(unsigned char *zl, unsigned char *p, unsigned cha
     return zl;
 }
 ```
+```c
+//设置previous_length字段-5字节
+int zipStorePrevEntryLengthLarge(unsigned char *p, unsigned int len) {
+    uint32_t u32;
+    if (p != NULL) {
+        //第一字节设置为254
+        p[0] = ZIP_BIG_PREVLEN;
+        u32 = len;
+        memcpy(p+1,&u32,sizeof(u32));
+        memrev32ifbe(p+1);
+    }
+    return 1 + sizeof(uint32_t);
+}
+//设置previous_length字段-5字节or1字节
+unsigned int zipStorePrevEntryLength(unsigned char *p, unsigned int len) {
+    if (p == NULL) {
+        return (len < ZIP_BIG_PREVLEN) ? 1 : sizeof(uint32_t) + 1;
+    } else {
+        if (len < ZIP_BIG_PREVLEN) {
+            p[0] = len;
+            return 1;
+        } else {
+            return zipStorePrevEntryLengthLarge(p,len);
+        }
+    }
+}
+```
 
+## 连锁更新
+### 流程
+先遍历计算出需要扩容的节点数量和长度，然后扩容list，将后面不需要扩容的节点向后移动，然后倒序遍历，移动需要扩容的节点。
+```c
+unsigned char *__ziplistCascadeUpdate(unsigned char *zl, unsigned char *p) {
+    zlentry cur;
+    //前一个数据的数据长度，占用多少字节数，当前节点和zl的偏移量
+    size_t prevlen, prevlensize, prevoffset; 
+    size_t firstentrylen; /* Used to handle insert at head. */
+    //curlen现在的长度
+    size_t rawlen, curlen = intrev32ifbe(ZIPLIST_BYTES(zl));
+    //还需要扩容的长度，需要扩容的节点计数器
+    size_t extra = 0, cnt = 0, offset;
+    size_t delta = 4; //如果需要更新，需要增加的4个字节数，扩容后5字节-原有1字节
+    //尾节点
+    unsigned char *tail = zl + intrev32ifbe(ZIPLIST_TAIL_OFFSET(zl));
+
+    /* Empty ziplist */
+    if (p[0] == ZIP_END) return zl;
+
+    //解析当前指针p指向数据信息到entry
+    zipEntry(p, &cur);
+    firstentrylen = prevlen = cur.headersize + cur.len;
+    prevlensize = zipStorePrevEntryLength(NULL, prevlen);
+    prevoffset = p - zl;
+    p += prevlen;
+
+    /* Iterate ziplist to find out how many extra bytes do we need to update it. */
+    while (p[0] != ZIP_END) {
+        //解析当前指针p指向数据信息到entry
+        assert(zipEntrySafe(zl, curlen, p, &cur, 0));
+
+        //如果长度没有变化，说明连锁更新结束
+        if (cur.prevrawlen == prevlen) break;
+
+        //如果节点previous_length的字节数>=前一个数据长度需要多少字节表示，说明不需要进行扩容且后续节点也不需要更新，只需要更新previous_length的数值
+        if (cur.prevrawlensize >= prevlensize) {
+            //可能都为1字节or5字节
+            if (cur.prevrawlensize == prevlensize) {
+                zipStorePrevEntryLength(p, prevlen);
+            } else {
+                //节点previous_length是5字节，更新高位len
+                zipStorePrevEntryLengthLarge(p, prevlen);
+            }
+            break;
+        }
+
+        /* cur.prevrawlen means cur is the former head entry. */
+        assert(cur.prevrawlen == 0 || cur.prevrawlen + delta == prevlen);
+
+        //节点的长度
+        rawlen = cur.headersize + cur.len;
+        //节点需要扩容，扩容后的长度+4
+        prevlen = rawlen + delta; 
+        prevlensize = zipStorePrevEntryLength(NULL, prevlen);
+        prevoffset = p - zl;
+        p += rawlen;
+        extra += delta;
+        cnt++;
+    }
+
+    /* Extra bytes is zero all update has been done(or no need to update). */
+    if (extra == 0) return zl;
+
+    //更新zltail字段，需要判断extra是否包含tail，因为zltail是到尾节点开始位置
+    if (tail == zl + prevoffset) {
+        if (extra - delta != 0) {
+            ZIPLIST_TAIL_OFFSET(zl) =
+                intrev32ifbe(intrev32ifbe(ZIPLIST_TAIL_OFFSET(zl))+extra-delta);
+        }
+    } else {
+        ZIPLIST_TAIL_OFFSET(zl) =
+            intrev32ifbe(intrev32ifbe(ZIPLIST_TAIL_OFFSET(zl))+extra);
+    }
+
+    /*
+        ｜---------------｜--------------｜
+            offset       p
+        ｜---------------｜--------------｜---------|
+            offset       p                  extra
+        ｜---------------｜---------|--------------｜
+            offset       p   extra         
+    */
+    //p指向第一个不需要更新的节点
+    offset = p - zl;
+    zl = ziplistResize(zl, curlen + extra);
+    p = zl + offset;
+    //把不需要扩容的节点向后移动
+    memmove(p + extra, p, curlen - offset - 1);
+    p += extra;
+
+    //依次移动数据并更新previous_length
+    while (cnt) {
+        zipEntry(zl + prevoffset, &cur); /* no need for "safe" variant since we already iterated on all these entries above. */
+        rawlen = cur.headersize + cur.len;
+        /* Move entry to tail and reset prevlen. */
+        memmove(p - (rawlen - cur.prevrawlensize), 
+                zl + prevoffset + cur.prevrawlensize, 
+                rawlen - cur.prevrawlensize);
+        p -= (rawlen + delta);
+        if (cur.prevrawlen == 0) {
+            /* "cur" is the previous head entry, update its prevlen with firstentrylen. */
+            zipStorePrevEntryLength(p, firstentrylen);
+        } else {
+            /* An entry's prevlen can only increment 4 bytes. */
+            zipStorePrevEntryLength(p, cur.prevrawlen+delta);
+        }
+        /* Forward to previous entry. */
+        prevoffset -= cur.prevrawlen;
+        cnt--;
+    }
+    return zl;
+}
+```
+
+
+## 删除
+### 流程
+计算出要删除的字节，记录删除的边界节点，向前移动后续未被删除的节点，需要考虑是否将整个尾部删除。
+```c
+//为什么用 **p？
+unsigned char *ziplistDelete(unsigned char *zl, unsigned char **p) {
+    size_t offset = *p-zl;
+    zl = __ziplistDelete(zl,*p,1);
+
+    *p = zl+offset;
+    return zl;
+}
+
+unsigned char *__ziplistDelete(unsigned char *zl, unsigned char *p, unsigned int num) {
+    //删除的长度，删除的数量
+    unsigned int i, totlen, deleted = 0;
+    size_t offset;
+    int nextdiff = 0;
+    //删除的第一个节点，
+    zlentry first, tail;
+    size_t zlbytes = intrev32ifbe(ZIPLIST_BYTES(zl));
+
+    zipEntry(p, &first); 
+    //将指针p移动到第一个不删除的节点
+    for (i = 0; p[0] != ZIP_END && i < num; i++) {
+        p += zipRawEntryLengthSafe(zl, zlbytes, p);
+        deleted++;
+    }
+
+    assert(p >= first.p);
+    totlen = p-first.p; /* Bytes taken by the element(s) to delete. */
+    if (totlen > 0) {
+        //删除后zltail的值
+        uint32_t set_tail;
+        if (p[0] != ZIP_END) {
+            //删除的是中间几个节点，需要考虑后续节点的previous_length长度是否可以记录前一个节点的长度
+            //计算节点长度需要用多少字节数表示(1or5)和p节点的previous_length使用字节(1or5)的差值->-4、4、0、0
+
+            //这一步相当于扩容或者缩容了，如果-4则缩容，p向后移动4字节，4则扩容，p向前移动4字节，后续操作会从p位置开始复制
+            p -= nextdiff;
+            assert(p >= first.p && p<zl+zlbytes-1);
+            zipStorePrevEntryLength(p,first.prevrawlen);
+
+            /* Update offset for tail */
+            set_tail = intrev32ifbe(ZIPLIST_TAIL_OFFSET(zl))-totlen;
+
+            assert(zipEntrySafe(zl, zlbytes, p, &tail, 1));
+            //如果尾节点和和first前一个节点中间有节点，需要考虑nextdiff对于zltail的影响，上面详细说过，不再赘述
+            if (p[tail.headersize+tail.len] != ZIP_END) {
+                set_tail = set_tail + nextdiff;
+            }
+
+            //将删除后面的节点向前移动
+            size_t bytes_to_move = zlbytes-(p-zl)-1;
+            memmove(first.p,p,bytes_to_move);
+        } else {
+            /*
+            整个尾部被删除，不需要拷贝数据，重新申请内存即可
+                               first.prevrawlen
+                ｜---------------｜--------|----------|-｜
+                zl             first   first.p      p 255 
+            */
+            set_tail = (first.p-zl)-first.prevrawlen;
+        }
+
+        /* Resize the ziplist */
+        offset = first.p-zl;
+        zlbytes -= totlen - nextdiff;
+        zl = ziplistResize(zl, zlbytes);
+        p = zl+offset;
+
+        /* Update record count */
+        ZIPLIST_INCR_LENGTH(zl,-deleted);
+
+        /* Set the tail offset computed above */
+        assert(set_tail <= zlbytes - ZIPLIST_END_SIZE);
+        ZIPLIST_TAIL_OFFSET(zl) = intrev32ifbe(set_tail);
+
+        //删除也可能触发连锁更新
+        if (nextdiff != 0)
+            zl = __ziplistCascadeUpdate(zl,p);
+    }
+    return zl;
+}
+```
 ## Q&A
 ### 为什么选择插入首部，而不是尾部，插入尾部可以省去复制的成本和减少连锁扩容风险？
 * 连锁扩容发生的几率较小

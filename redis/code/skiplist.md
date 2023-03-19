@@ -1,8 +1,10 @@
 # 跳表
 ## 结构
-```c
+<img alt="8" src="./image/8.png"/>
+
+```c 
 typedef struct zskiplistNode {
-    //数据 char *
+    //数据 char *->sds
     sds ele;
     //分值 用于排序
     double score;
@@ -176,7 +178,10 @@ void zslDeleteNode(zskiplist *zsl, zskiplistNode *x, zskiplistNode **update) {
     zsl->length--;
 }
 ```
+## 跳跃表API和复杂度
+<img alt="9" src="./image/9.png"/>
 
 ## Question
 ### 跳表span解析
-[如何理解redis跳表源码中的span？](https://blog.csdn.net/qq_19648191/article/details/85381769)
+[如何理解redis跳表源码中的span？](https://blog.csdn.net/qq_19648191/article/details/85381769)  
+摘抄自《Redis设计与实现》
