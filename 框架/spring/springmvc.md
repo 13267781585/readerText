@@ -31,7 +31,7 @@
 springmvc 自定义了Servlet类用于处理请求(DispatcherServlet)
 
 * DispatcherServlet 类继承结构   
-![DispatcherServlet](\image\DispatcherServletClassStruct.png)
+<img src=".\image\DispatcherServletClassStruct.png" alt="DispatcherServlet" />    
 
 * DispathcerServlet 处理请求简要流程   
-![RequestHandler](\image\requestHandler.jpg)
+<img src=".\image\requestHandler.jpg" alt="RequestHandler" />    

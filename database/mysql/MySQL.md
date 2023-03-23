@@ -137,15 +137,15 @@ SET @@SESSION.information_schema_stats_expiry=0;
 3. 删除数据后innodb和myisam都不会立刻释放空间，只会标记记录为删除状态，删除的空间可重用(可使用optmize table table_name 整理空间碎片)。
     * myisam
     删除前
-    ![21](.\image\21.jpg)
+    <img src=".\image\21.jpg" alt="21" />    
     删除后
-    ![22](.\image\22.jpg)
+    <img src=".\image\22.jpg" alt="22" />    
     可以看出虽然行数和平均的行数长度都为0，但是数据的长度没有改变，只是作为空间碎片的数据重复使用，并没有释放磁盘空间。
     * innodb
     删除前
-    ![23](.\image\23.jpg)
+    <img src=".\image\23.jpg" alt="23" />    
     删除后
-    ![24](.\image\24.jpg)
+    <img src=".\image\24.jpg" alt="24" />    
     可以看出虽然行数和平均的行数长度都为0，但是数据的长度没有改变(删除后的空间在innodb引擎不作为空间碎片)。
 4. 执行后不重置 auto_increment
 
@@ -200,18 +200,18 @@ SET @@SESSION.information_schema_stats_expiry=0;
 [列存数据库，不只是列式存储](https://cn.kyligence.io/blog/%E5%88%97%E5%AD%98%E6%95%B0%E6%8D%AE%E5%BA%93%EF%BC%8C%E4%B8%8D%E5%8F%AA%E6%98%AF%E5%88%97%E5%BC%8F%E5%AD%98%E5%82%A8/)
 
 ## SQL语句执行顺序
-![66](.\image\66.jpg)
+<img src=".\image\66.jpg" alt="66" />    
 
 ## 锁错误排查方式
-![68](.\image\68.jpg)
+<img src=".\image\68.jpg" alt="68" />    
 
 ## 基本概念
 * 聚簇索引
 * 索引覆盖
 * 索引下推
 * MMR
-![87](.\image\87.jpg)
-![88](.\image\88.jpg)
+<img src=".\image\87.jpg" alt="87" />    
+<img src=".\image\88.jpg" alt="88" />    
 
 
 ## mysql问题合集
@@ -228,19 +228,19 @@ SET @@SESSION.information_schema_stats_expiry=0;
 * Statement和PrepareStatement
 * mysql常见引擎
 * 三大范式
-![80](.\image\80.jpg)
-![81](.\image\81.jpg)
-![82](.\image\82.jpg)
-![83](.\image\83.jpg)
-![84](.\image\84.jpg)
-![85](.\image\85.jpg)
-![86](.\image\86.jpg)
+<img src=".\image\80.jpg" alt="80" />    
+<img src=".\image\81.jpg" alt="81" />    
+<img src=".\image\82.jpg" alt="82" />    
+<img src=".\image\83.jpg" alt="83" />    
+<img src=".\image\84.jpg" alt="84" />    
+<img src=".\image\85.jpg" alt="85" />    
+<img src=".\image\86.jpg" alt="86" />    
 
 ## 查询语句执行过程
-![89](.\image\89.jpg)
+<img src=".\image\89.jpg" alt="89" />    
 
 ## 主从同步
-![90](.\image\90.jpg)
+<img src=".\image\90.jpg" alt="90" />    
 
 ## 正排索引和倒排索引
 * 正排索引以文档为关键字，倒排索引以字或词为索引

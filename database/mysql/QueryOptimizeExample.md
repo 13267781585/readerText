@@ -53,12 +53,12 @@ order by cid desc limit 1
    2. 每次加载都是全量，没有更新的数据也重新加载了一次
    3. 加载的数据缓存在本地，需要维护多个数据
 
-    ![3](./image/3.jpg)
+    <img src="./image/3.jpg" alt="3" />    
     解决方案：   
     1. 从spring schedule迁移到job task(saturn console)
     2. 初始化全量加载一次，并记录这批数据的最大更新时间，记为lastMaxUpdateTime job定时按 数据表中的更新字段 > lastMaxUpdateTime加载增量更新的数据列表
     3. 缓存从本地缓存改为 redis 缓存
-    ![2](./image/2.jpg)
+    <img src="./image/2.jpg" alt="2" />    
 
 2. 查询范围大
 ```sql

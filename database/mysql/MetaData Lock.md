@@ -26,7 +26,7 @@ select * from table_name1;
 ```
 
 ### MDL的分类
-![25](.\image\25.jpg)
+<img src=".\image\25.jpg" alt="25" />    
 使用show processlist可以得到等待锁信息：
 * Waiting for global read lock 
 * Waiting for commit lock

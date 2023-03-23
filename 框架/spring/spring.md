@@ -1,7 +1,7 @@
 # Spring 笔记
 
 ### Spring模块
-![3](.\image\3.jpg)
+<img src=".\image\3.jpg" alt="3" />    
 1. 核心容器（Core Container）
 
     Spring-Core：核心工具类，Spring其他模块大量使用Spring-Core。
@@ -118,7 +118,7 @@ protected Object getSingleton(String beanName, boolean allowEarlyReference) {
 }
 
 ```
-![1](.\image\1.jpg)
+<img src=".\image\1.jpg" alt="1" />    
 
 原博客地址:https://blog.csdn.net/m0_43448868/article/details/113578628
 
@@ -214,7 +214,7 @@ ApplicationContextAware //获取ApplicationContext对象
 
 ### bean生命周期   
 1. 主流程：类被加载成BeanDefinition存放->实例化->属性设置->初始化->销毁   
-![2.jpg](.\image\2.jpg)
+<img src=".\image\2.jpg" alt="2.jpg" />    
 2. 实例化前后的扩展  
 ```java
 public interface InstantiationAwareBeanPostProcessor extends BeanPostProcessor {
@@ -321,7 +321,7 @@ public Object applyBeanPostProcessorsAfterInitialization(Object existingBean, St
 
 ```
 ### Springmvc的流程   
-![4.jpg](.\image\4.jpg)
+<img src=".\image\4.jpg" alt="4.jpg" />    
 
 
 1. 用户请求被Spring 前端控制Servelt DispatcherServlet捕获；

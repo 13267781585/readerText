@@ -1,4 +1,4 @@
 # 数据类型
-![77](.\image\77.jpg)
-![78](.\image\78.jpg)
-![79](.\image\79.jpg)
+<img src=".\image\77.jpg" alt="77" />    
+<img src=".\image\78.jpg" alt="78" />    
+<img src=".\image\79.jpg" alt="79" />    

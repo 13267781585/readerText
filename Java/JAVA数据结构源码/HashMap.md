@@ -229,7 +229,7 @@ static int indexFor(int h, int length) {
 
 这时候 hash 函数（“扰动函数”）的价值就体现出来了，说到这里大家应该猜出来了。看下面这个图，
 
-![4-1](..\image\HashMap-4-1.jpg)
+<img src="..\image\HashMap-4-1.jpg" alt="4-1" />    
 右位移16位，正好是32bit的一半，自己的高半区和低半区做异或，就是为了混合原始哈希码的高位和低位，以此来加大低位的随机性。而且混合后的低位掺杂了高位的部分特征，这样高位的信息也被变相保留下来。
 摘取自https://zhuanlan.zhihu.com/p/133618417
 

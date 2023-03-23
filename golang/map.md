@@ -1,6 +1,6 @@
 # Map
 
-![14](./image/14.jpg)
+<img src="./image/14.jpg" alt="14" />    
 
 ## 底层数据结构
 
@@ -44,7 +44,7 @@ type bmap struct {
 
 * 当key和value都不包含指针且key和value的大小都小于128字节，会将该map标记为不含指针，在gc回收时不需要扫描整个map(不包含指针，不需要继续向下标记)，因为bmap结构中包含由overflow溢出指针，所以将该字段转移到mapextra结构中存放。
 * topbits用于存放key的hash的前8位值
-![15](./image/15.jpg)
+<img src="./image/15.jpg" alt="15" />    
 * tophash的特殊值
 
 ```go
