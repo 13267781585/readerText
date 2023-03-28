@@ -1,6 +1,6 @@
-## chan
+# chan
 
-#### 底层数据结构
+## 底层数据结构
 
 ```go
 type hchan struct {
@@ -20,7 +20,7 @@ type hchan struct {
 
 ```
 
-#### 接受数据
+## 接受数据
 
 ```go
 <- chan
@@ -191,3 +191,6 @@ func chanrecv(c *hchan, ep unsafe.Pointer, block bool) (selected, received bool)
 }
 
 ```
+
+[通道](https://gfw.go101.org/article/channel.html)
+[通道用例大全](https://gfw.go101.org/article/channel-use-cases.html)

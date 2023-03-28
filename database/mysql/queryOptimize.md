@@ -23,24 +23,24 @@ CREATE TABLE single_table (
 * select_type select查询对应的类型   
     * SIMPLE：简单查询，不包含 UNION 或者子查询。
     * PRIMARY：查询中如果包含子查询、union、union all，最左边的 SELECT 将被标记为 PRIMARY。
-    ![53](./image/53.jpg)
+    <img src="./image/53.jpg" alt="53" />    
     * UNION：在 UNION 或者 UNION ALL 语句中，除了最左边出现的SELECT。
     * UNION RESULT：择使用临时表来完成 UNION 查询的去重工作，针对该临时表的查询的 select_type 就是 UNION RESULT。
     * DEPENDENT UNION：在包含 UNION 或者 UNION ALL 的大查询中，如果各个小查询都依赖于外层查询的话，那除了最左边的那个小查询之外，其余的小查询的 select_type 的值就是 DEPENDENT UNION 。
         * 和外层有关联
-        ![56](./image/56.jpg)
-        ![57](./image/57.jpg)
+        <img src="./image/56.jpg" alt="56" />    
+        <img src="./image/57.jpg" alt="57" />    
         * 和外层无关联
-        ![58](./image/58.jpg)
+        <img src="./image/58.jpg" alt="58" />    
     * SUBQUERY：包含子查询的查询语句不能够转为对应的 semi-join 的形式，并且该子查询是不相关子查询，并且查询优化器决定采用将该子查询物化的方案来执行该子查询时，该子查询的第一个 SELECT 关键字代表的那个查
 询的 select_type 就是 SUBQUERY。
-    ![54](./image/54.jpg)
+    <img src="./image/54.jpg" alt="54" />    
     * DEPENDENT SUBQUERY：包含子查询的查询语句不能够转为对应的 semi-join 的形式，并且该子查询是相关子查询，则该子查询的第一个 SELECT 关键字代表的那个查询的 select_type 就是 DEPENDENT SUBQUERY。
-    ![55](./image/55.jpg)
+    <img src="./image/55.jpg" alt="55" />    
     * DERIVED：查询的表使用物化的方式生成的。
-    ![59](./image/59.jpg)
+    <img src="./image/59.jpg" alt="59" />    
     * MATERIALIZED：包含有子查询，采用物化表的形式执行后在进行连接。
-    ![60](./image/60.jpg)
+    <img src="./image/60.jpg" alt="60" />    
 
 * table 表名   
 * type 描述数据匹配的类型  
@@ -51,21 +51,21 @@ CREATE TABLE single_table (
     * ref_or_null：使用二级索引作为连接条件且允许字段为null(index = '' or index = null)
     * index_merge：当查询条件使用了多个索引时，表示开启了 Index Merge 优化，此时执行计划中的 key 列列出了使用到的索引。
     * unique_subquery：子查询优化为exists，且子查询可以使用到主键进行等值匹配。
-    ![61](./image/61.jpg)
-    ![62](./image/62.jpg)
+    <img src="./image/61.jpg" alt="61" />    
+    <img src="./image/62.jpg" alt="62" />    
     * index_subquery：子查询优化为exists，且子查询可以使用到二级索引进行等值匹配。
-    ![63](./image/63.jpg)
-    ![64](./image/64.jpg)
+    <img src="./image/63.jpg" alt="63" />    
+    <img src="./image/64.jpg" alt="64" />    
     * range：对索引列进行范围查询，执行计划中的 key 列表示哪个索引被使用了。
     * index：查询遍历了整棵索引树，与 ALL 类似，只不过扫描的是索引，而索引一般在内存中，速度更快(通常是条件无法命中索引，但是索引列种含有该值，可以通过遍历索引树得到结果，比遍历主索引树代价小)。
     ```sql
     -- 无法使用idx_key_part(key_part1, key_part2, key_part3) 索引 但是遍历二级索引树的代价比聚簇索引小
     select key_part2 from single_table where key_part3 = '1';
     ```
-    * ALL：全表扫描。
+    * ALL：全表扫描
 * possible_keys 可能用到的索引   
 * key 实际用到的索引   
-* key_len 用到的索引的最大长度长度，由一下决定：
+* key_len 用到的索引的最大长度长度，由以下决定：
     * 固定长度索引列，长度是固定
     * 变长类型来说，取决于使用的字符集，utf-8一个字符占用3字节，还需要2字节的变长字符长度记录。
     * 允许存放NULL，需要额外1字节标记   
@@ -74,7 +74,7 @@ CREATE TABLE single_table (
     * 全表：表的行数
     * 索引：索引需要扫描的行数
 * filtered rows经过条件过滤的百分比
-![65](./image/65.jpg)
+<img src="./image/65.jpg" alt="65" />    
 查询优化器打算把 s1 当作驱动表， s2 当作被驱动表。可以看出驱动表 s1 表的执行计划的 rows 列为 9688 ， filtered 列为 10.00 ，这意味着驱动表 s1 满足common_field = '500' 的扇出值就是 9688 × 10.00% = 968.8 ，这说明还要对被驱动表执行大约 968 次查询。
 
 * Extra 额外信息  
@@ -107,7 +107,7 @@ MySQL 需要创建临时表来存储查询的结果，临时表可能是内存�
 
 #### 使用where条件的三种方式
 3. Using index：表明查询使用了覆盖索引，不用回表，查询效率非常高。
-4. Using index condition：表示查询命中索引后，如果where中还有和索引相关的判断条件，会将条件下推到存储索引层，对索引查询出的数据进行再一次的过滤再回表查询数据行，减少查询不相关的数据(存储引擎层)。
+4. Using index condition：表示查询命中索引后，如果where中还有和索引相关的判断条件，会将条件下推到存储索引层，对索引查询出的数据进行再一次的过滤再回表查询数据行，减少回表的数据量(存储引擎层)。
 5. Using where：表明查询在没有走索引或者走了索引还有索引列外的条件时用where过滤数据(服务器层)。
 
 6. Using join buffer (Block Nested Loop)：连表查询的方式，表示当被驱动表的没有使用索引的时候，MySQL 会先将驱动表读出来放到 join buffer 中，再遍历被驱动表与驱动表进行查询。
@@ -205,7 +205,7 @@ select a,b,c from table_name name inner join (select id from table_name order by
 ii. 利用索引列连续的特点进行快速查询
 ```sql
 -- 查询的列中有索引列且是连续的，在每次查询后可以记录下上次的 索引值，作为范围查询条件
-selelct  a,b,c from table_name where a between m and n;
+select  a,b,c from table_name where a between m and n;
 ```
 iii. 汇总表
 如果sql的操作比较繁杂，优化困难，可以建立一张汇总表，每次查询可以直接获取数据不需要额外总计，在数据变更时利用mq进行触发统计
@@ -240,7 +240,7 @@ In most cases, a DISTINCT clause can be considered as a special case of GROUP BY
 大多数情况下,两种相同
 ```
 ### insert io分析
-![1](./image/1.jpg)
+<img src="./image/1.jpg" alt="1" />    
 
 
 ### 查询表的行数
@@ -284,29 +284,29 @@ select s1.* from single_table s1 exists (select 1 from single_table s2 where s2.
 select s1.* from single_table s1 exists (select 1 from single_table s2 where s1.key1 = s2.key3 and s1.key2 = s2.key2);
 ```
 
-* 物化表
+* 物化表  
 只适用于不相关子查询，也就是子查询和外层查询没有关联。将子查询的结果不直接作为外层查询的参数，而是放入临时表，并执行下列操作：
     * 去重
     * 当表的大小少于设置的 tmp_table_size 或者 max_heap_table_size，建立基于内存的MEMOEY表并建立哈希索引；若超过，则写入磁盘，并建立B+树索引。
 然后将使用物化表和外层表做内连接查询数据。
 
-* 半连接(semi join)
+* 半连接(semi join)  
 半连接用于优化in子查询，语义是驱动表中一条数据在被驱动表中找到一条满足on条件记录时加入结果集，且只返回驱动表的数据(去重)。该模式适用于不相关和相关子查询。 
     * 不相关子查询
 
     * 因为驱动表中的数据在被驱动表中可能有多条符合条件的记录，如何对重复的记录进行去重呢？
-        1. Table pullout （子查询中的表上拉）
+        1. Table pullout （子查询中的表上拉）  
     当子查询中只有主键或者唯一索引查询条件时，主键和唯一索引的性质可以达到去重的条件。
             ```sql
             -- key2 唯一索引
             SELECT s1.* FROM single_table s1 WHERE key2 IN (SELECT key2 FROM single_table s2 WHERE key3 < '500');
             ```
             * 执行计划
-            ![45](./image/45.jpg)
+            <img src="./image/45.jpg" alt="45" />    
             * 优化sql(直接优化为内连接)
-            ![46](./image/46.jpg)
+            <img src="./image/46.jpg" alt="46" />    
 
-        2. DuplicateWeedout execution strategy （重复值消除）
+        2. DuplicateWeedout execution strategy （重复值消除）   
         建立临时表，将记录的id作为临时表的主键，在将记录放入结果集之前，将记录主键放入临时表，添加失败则说明该结果集中存在该记录，不进行放入。
             ```sql
             CREATE TABLE tmp (
@@ -320,11 +320,11 @@ select s1.* from single_table s1 exists (select 1 from single_table s2 where s1.
             SELECT * FROM single_table s1 WHERE key3 IN (SELECT key1 FROM single_table s2 WHERE key1 > 'a' AND key1 < 'b');
             ```
             通过扫描s2表的key1索引获取不重复的数值到s1中查询是否有符合的记录(正常是s1拿数据到s2中查询，该策划采用s2获取不重复数据到s1中查询)。
-            ![44](./image/44.jpg)
+            <img src="./image/44.jpg" alt="44" />    
             * 执行计划
-            ![47](./image/47.jpg)
+            <img src="./image/47.jpg" alt="47" />    
             * 优化sql
-            ![48](./image/48.jpg)
+            <img src="./image/48.jpg" alt="48" />    
 
         4. Semi-join Materialization execution strategy
             ```sql
@@ -332,9 +332,9 @@ select s1.* from single_table s1 exists (select 1 from single_table s2 where s1.
             ```
             外层查询common_field字段无索引，子查询需要回表，物化不相关子查询(不重复)，再进行连接。
             * 执行计划
-            ![51](./image/51.jpg)
+            <img src="./image/51.jpg" alt="51" />    
             * 优化sql
-            ![52](./image/52.jpg)
+            <img src="./image/52.jpg" alt="52" />    
 
         5. FirstMatch execution strategy （首次匹配）
             ```sql
@@ -342,9 +342,9 @@ select s1.* from single_table s1 exists (select 1 from single_table s2 where s1.
             ```
             子查询common_field字段无索引，外层查询key3有索引。外层s2拿一条数据到s1进行匹配，满足条件放入结果集并停止这条数据的匹配进行下一条数据。
             * 执行计划
-            ![50](./image/50.jpg)
+            <img src="./image/50.jpg" alt="50" />    
             * 优化sql
-            ![51](./image/51.jpg)
+            <img src="./image/51.jpg" alt="51" />    
     * 适用semi优化的情况
         1. 该子查询必须是和 IN 语句组成的布尔表达式，并且在外层查询的 WHERE 或者 ON 子句中出现。
             ```sql
@@ -369,6 +369,9 @@ select s1.* from single_table s1 exists (select 1 from single_table s2 where s1.
             ```
         4. 该子查询不能包含 GROUP BY 或者 HAVING 语句或者聚集函数。
 
-
+### 分析系统优化方案
+* 数据分离：监听业务数据库binlog，拉取数据(架构可以采用一主多从或树状结构(根据数据时效性选择数据库节点分析，实效性要求大层数低))
+* 选型：列式存储数据库
+* 处理方式：预先计算(物化视图)
 
 转载自《MySQL是怎样运行的：从根儿上理解MySQL》
