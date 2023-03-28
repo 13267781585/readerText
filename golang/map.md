@@ -874,9 +874,9 @@ type hiter struct {
 
   2. 调用mapiternext判断是否还有元素(这里需要考虑扩容情况下遍历的情况，是按照新的桶序号遍历的，但是可能迁移过程还没有完成，涉及到新老数据的交叉遍历)
   假设我们有下图所示的一个 map，起始时 B = 1，有两个 bucket，后来触发了扩容（这里不要深究扩容条件，只是一个设定），B 变成 2。并且， 1 号 bucket 中的内容搬迁到了新的 bucket， 1号裂变成 1号和 3号；0号 bucket 暂未搬迁。老的 bucket 挂在在 *oldbuckets 指针上面，新的 bucket 则挂在*buckets 指针上面。
-  ![16](./image/16.jpg)
+  <img src="./image/16.jpg" alt="16" />
   这时，我们对此 map 进行遍历。假设经过初始化后，startBucket = 3，offset = 2。于是，遍历的起点将是 3 号 bucket 的 2 号 cell，下面这张图就是开始遍历时的状态：
-  ![17](./image/17.jpg)
+  <img src="./image/17.jpg" alt="17" />
   标红的表示起始位置，bucket 遍历顺序为：3 -> 0 -> 1 -> 2。
 
   因为 3 号 bucket 对应老的 1 号 bucket，因此先检查老 1 号 bucket 是否已经被搬迁过。判断方法就是：
@@ -891,17 +891,17 @@ type hiter struct {
 
   在本例中，老 1 号 bucket 已经被搬迁过了。所以它的 tophash[0] 值在 (0,4) 范围内，因此只用遍历新的 3 号 bucket。
   继续从上次遍历到的地方往后遍历，从新 3 号 overflow bucket 中找到了元素 f 和 元素 g。
-  ![18](./image/18.jpg)
+  <img src="./image/18.jpg" alt="18" />
   新 3 号 bucket 遍历完之后，回到了新 0 号 bucket。0 号 bucket 对应老的 0 号 bucket，经检查，老 0 号 bucket 并未搬迁，因此对新 0 号 bucket 的遍历就改为遍历老 0 号 bucket。那是不是把老 0 号 bucket 中的所有 key 都取出来呢？
 
   并没有这么简单，回忆一下，老 0 号 bucket 在搬迁后将裂变成 2 个 bucket：新 0 号、新 2 号。而我们此时正在遍历的只是新 0 号 bucket（注意，遍历都是遍历的 *bucket 指针，也就是所谓的新 buckets）。所以，我们只会取出老 0 号 bucket 中那些在裂变之后，分配到新 0 号 bucket 中的那些 key。
   因此， lowbits == 00 的将进入遍历结果集：
-  ![19](./image/19.jpg)
+  <img src="./image/19.jpg" alt="19" />
   和之前的流程一样，继续遍历新 1 号 bucket，发现老 1 号 bucket 已经搬迁，只用遍历新 1 号 bucket 中现有的元素就可以了。结果集变成：
-  ![20](./image/20.jpg)
+  <img src="./image/20.jpg" alt="20" />
   继续遍历新 2 号 bucket，它来自老 0 号 bucket，因此需要在老 0 号 bucket 中那些会裂变到新 2 号 bucket 中的 key，也就是 lowbit==10 的那些 key。
   这样，遍历结果集变成：
-  ![21](./image/21.jpg)
+  <img src="./image/21.jpg" alt="21" />
   map 遍历的核心在于理解 2 倍扩容时，老 bucket 会分裂到 2 个新 bucket 中去。而遍历操作，会按照新 bucket 的序号顺序进行，碰到老 bucket 未搬迁的情况时，要在老 bucket 中找到将来要搬迁到新 bucket 来的 key。
 
 ## 扩容
