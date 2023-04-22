@@ -65,8 +65,8 @@ unsigned char *ziplistNew(void) {
 typedef struct zlentry {
     unsigned int prevrawlensize; //前一个数据的长度需要用多少字节表示 1 或者 5 字节
     unsigned int prevrawlen;     //前一个数据字节数
-    unsigned int lensize;        //数据长度 1 2 5
-    unsigned int len;            //数据的长度需要用多少字节表示
+    unsigned int lensize;        //数据长度需要多少字节表示 1 2 5
+    unsigned int len;            //数据的长度
     unsigned int headersize;     //头部占用的长度 prevrawlensize+lensize->也就是元数据占用的字节数
     unsigned char encoding;      //数据的类型 整形 or 字节数组
     unsigned char *p;            //数据指针，指向previous_entry_length
@@ -695,6 +695,30 @@ unsigned char *__ziplistDelete(unsigned char *zl, unsigned char *p, unsigned int
     return zl;
 }
 ```
+
+## 获取ziplist节点数量
+```c
+unsigned int ziplistLen(unsigned char *zl) {
+    unsigned int len = 0;
+    //zllen的长度小于65535表示节点数量
+    if (intrev16ifbe(ZIPLIST_LENGTH(zl)) < UINT16_MAX) {
+        len = intrev16ifbe(ZIPLIST_LENGTH(zl));
+    } else {
+        //大于等于65535表示需要遍历整个ziplist才知道
+        unsigned char *p = zl+ZIPLIST_HEADER_SIZE;
+        size_t zlbytes = intrev32ifbe(ZIPLIST_BYTES(zl));
+        while (*p != ZIP_END) {
+            p += zipRawEntryLengthSafe(zl, zlbytes, p);
+            len++;
+        }
+
+        /* Re-store length if small enough */
+        if (len < UINT16_MAX) ZIPLIST_LENGTH(zl) = intrev16ifbe(len);
+    }
+    return len;
+}
+```
+
 ## Q&A
 ### 为什么选择插入首部，而不是尾部，插入尾部可以省去复制的成本和减少连锁扩容风险？
 * 连锁扩容发生的几率较小

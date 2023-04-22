@@ -1,4 +1,4 @@
-# linkedlist
+# linkedlist(3.2后被quicklist替代)
 ## 结构
 ```c
 typedef struct listNode {

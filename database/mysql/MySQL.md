@@ -244,3 +244,18 @@ SET @@SESSION.information_schema_stats_expiry=0;
 
 ## 正排索引和倒排索引
 * 正排索引以文档为关键字，倒排索引以字或词为索引
+
+## 热点行优化
+[热点行优化](https://help.aliyun.com/document_detail/178149.html)
+
+##  重复插入数据
+### ON DUPLICATE KEY UPDATE(mysql独有语法)
+插入数据时，如果表中存在对应主键数据，会执行 ON DUPLICATE KEY UPDATE后续更新操作，若后续字段有发生更新，返回2(用于区分不同情况)，若覆盖更新的字段和原字段数据一致，返回0；如果表中没有该主键，插入数据返回1。
+```sql
+-- 需要使用主键判断
+INSERT INTO table_name (`id`, `create_time`, `update_time`) VALUES (2, 0, 0) on DUPLICATE KEY UPDATE create_time=2 , update_time=1;
+```
+[ON DUPLICATE KEY UPDATE 用法与说明](https://blog.csdn.net/zyb2017/article/details/78449910)
+### REPLACE
+插入数据时，如果表中存在对应主键数据，会先删除记录，再插入。
+[MySQL replace语句](https://www.yiibai.com/mysql/replace.html)
