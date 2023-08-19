@@ -756,5 +756,8 @@ SET key1 "value" prvdata "data"
 3. 分布均匀：哈希结果在数据分布上非常均匀，可以减少数据被集中存储在某些节点上的情况，从而提高Redis的性能和稳定性。
 4. 易于实现和使用：实现相对简单，容易理解和使用，适合于大规模的分布式系统。
 
-[美团针对Redis Rehash机制的探索和实践](https://tech.meituan.com/2018/07/27/redis-rehash-practice-optimization.html)
+### 为什么scan采用高位顺序的遍历方式？
+因为在遍历map过程中可能会发生扩容，如果采用低位顺序方式，会产生很多重复遍历的数据，采用高位顺序方式，遍历的位置高低散列，可以减少扩容带来的影响
+
+[美团针对Redis Rehash机制的探索和实践](https://tech.meituan.com/2018/07/27/redis-rehash-practice-optimization.html)   
 摘抄自《Redis设计与实现》

@@ -1,4 +1,5 @@
-#### nil
+# golang
+## nil
 
 * nil 不是关键字，可以定义变量名问nil的变量
 
@@ -64,7 +65,7 @@
 
 [理解golang中什么是nil](https://blog.csdn.net/raoxiaoya/article/details/108705176)
 
-#### int和uint的意义
+## int和uint的意义
 
 go提供了int8、int16、int32、int64等固定长度的数据类型，int和uint是根据cpu的位数来决定的，当使用的时候没有数据精度要求的时候推荐使用int和uint，因为按照cpu一个字的精度存放数据，有利于提高效率。
 
@@ -73,7 +74,7 @@ go提供了int8、int16、int32、int64等固定长度的数据类型，int和ui
 [与Go语言中的特定类型（int64 / uint64）相比，常规类型（int / uint）有什么优势？](https://ask.csdn.net/questions/1011809)
 [在go中使用大小型或无符号整数类型的原因是什么？](https://www.codenong.com/34796020/)
 
-#### type关键字的作用
+## type关键字的作用
 
 * 定义结构体
 * 定义接口
@@ -178,7 +179,7 @@ func main() {
 // float64...
 ```
 
-#### Slice是否公用底层数组
+## Slice是否公用底层数组
 
 * 当从一个切片或数组截取出来的切片共享同一个底层数组，对一个切片修改，其他的可见
 
@@ -232,11 +233,11 @@ func main() {
 // [0 1]
 ```
 
-#### 切片和数组的区别
+## 切片和数组的区别
 
 数组是长度固定的，切片底层是基于数组实现的，是对数组的扩展，可以实现自动扩容，[2]int和[3]int是不同的类型
 
-#### 切换扩容长度的计算
+## 切换扩容长度的计算
 
 ```go
 
@@ -341,6 +342,22 @@ var class_to_size = [_NumSizeClasses]uint16{0, 8, 16, 32, 48, 64, 80, 96, 112, 1
 
 [深度解密Go语言之Slice](https://mp.weixin.qq.com/s/xik2YcHpgpbZd-8nCwACKw)
 
-#### uint8 和 byte，uint32 和 rune 没有区别，为什么要定义这两个别名?
+## uint8 和 byte，uint32 和 rune 没有区别，为什么要定义这两个别名?
 
 因为uint8 和 uint32 直观上来看就是一个数值，但是也可以是一个字符，为了消除这个直观的错觉，定义这两个别名更好的表示。
+
+
+## 信号量
+[go中semaphore(信号量)源码解读](https://www.cnblogs.com/ricklz/p/14610213.html)
+
+## race
+检查程序是否有并发读写统一变量的调试方式。   
+[golang中的race检测](https://www.cnblogs.com/yjf512/p/5144211.html)
+
+## noCopy
+因为接口含有状态，用于使结构在使用时不可复制避免出错的机制。   
+[Go 的 noCopy 是什么机制？](https://blog.csdn.net/EDDYCJY/article/details/125883888)     
+[深入理解Golang nocopy原理](https://int64.ink/blog/golang_%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3golang_nocopy%E5%8E%9F%E7%90%86/)
+
+## context
+[Golang Context 源码剖析](http://www.17bigdata.com/study/programming/godeep/goddeep-context-src.html)
