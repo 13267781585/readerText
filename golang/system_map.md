@@ -2,6 +2,10 @@
 
 <img src="./image/14.jpg" alt="14" />
 
+## 使用说明
+
+## 深拷贝(key+value)
+
 ## 底层数据结构
 
 ```go

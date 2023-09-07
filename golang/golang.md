@@ -1,4 +1,5 @@
 # golang
+
 ## nil
 
 * nil 不是关键字，可以定义变量名问nil的变量
@@ -346,18 +347,31 @@ var class_to_size = [_NumSizeClasses]uint16{0, 8, 16, 32, 48, 64, 80, 96, 112, 1
 
 因为uint8 和 uint32 直观上来看就是一个数值，但是也可以是一个字符，为了消除这个直观的错觉，定义这两个别名更好的表示。
 
-
 ## 信号量
+
 [go中semaphore(信号量)源码解读](https://www.cnblogs.com/ricklz/p/14610213.html)
 
 ## race
-检查程序是否有并发读写统一变量的调试方式。   
+
+检查程序是否有并发读写统一变量的调试方式。
 [golang中的race检测](https://www.cnblogs.com/yjf512/p/5144211.html)
 
 ## noCopy
-因为接口含有状态，用于使结构在使用时不可复制避免出错的机制。   
-[Go 的 noCopy 是什么机制？](https://blog.csdn.net/EDDYCJY/article/details/125883888)     
+
+因为接口含有状态，用于使结构在使用时不可复制避免出错的机制。
+[Go 的 noCopy 是什么机制？](https://blog.csdn.net/EDDYCJY/article/details/125883888)
 [深入理解Golang nocopy原理](https://int64.ink/blog/golang_%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3golang_nocopy%E5%8E%9F%E7%90%86/)
 
 ## context
+
 [Golang Context 源码剖析](http://www.17bigdata.com/study/programming/godeep/goddeep-context-src.html)
+
+## make和new区别
+
+* make专门用于创建slice、map、chan类型数据并初始化；new用于创建任意类型
+* make返回的是类型的引用(Type)，new返回的是类型引用的指针(*Type)
+
+## panic和throw的区别
+
+* panic表示可以捕获处理的奔溃，使用recover修复，throw表示不可修复的错误(例如未加锁情况下解锁，map并发使用等)，不行可以修复，程序会直接退出
+* panic可以再程序中使用，throw存在底层源码，用户不可以使用
