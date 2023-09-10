@@ -358,6 +358,7 @@ var class_to_size = [_NumSizeClasses]uint16{0, 8, 16, 32, 48, 64, 80, 96, 112, 1
 
 ## noCopy
 
+变量资源本身带状态且操作要配套的不能拷贝，携带有noCopy的结构体都不能复制。
 因为接口含有状态，用于使结构在使用时不可复制避免出错的机制。
 [Go 的 noCopy 是什么机制？](https://blog.csdn.net/EDDYCJY/article/details/125883888)
 [深入理解Golang nocopy原理](https://int64.ink/blog/golang_%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3golang_nocopy%E5%8E%9F%E7%90%86/)
