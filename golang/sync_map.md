@@ -15,22 +15,5 @@
 * miss的次数大于等于写数据的大小
 * 调用Range方法，读写数据不一致
 
-```mermaid
-graph LR
-A[方形] 
-B(圆角)
-C{条件a}
-D[结果1]
-E[结果2]
-F((圆形))
-G[方形]
-X[结果3]
-A --实线--> B
-B -.虚线.-> A
-B --长直线----> G
-B --> C
-C ==> |粗实线| D
-C -.无箭头虚线.- E
-C --无箭头实线--- X
-B --> F
-```
+[sync.Map源码解析](https://blog.csdn.net/u012785877/article/details/129832499)
+[Golang - sync.map 设计思想和底层源码分析](https://blog.csdn.net/jiohfgj/article/details/130531564)
