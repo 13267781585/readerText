@@ -1,16 +1,19 @@
-# MySQL 
+# MySQL
 
-## 排名内置函数   
+## 排名内置函数
+
 * RANK()  
  并列跳跃排名，并列即相同的值，相同的值保留重复名次，遇到下一个不同值时，跳跃到总共的排名。 1 2 2 4 5  
-* DENSE_RANK()   
-并列连续排序，并列即相同的值，相同的值保留重复名次，遇到下一个不同值时，依然按照连续数字排名。 1 2 2 3 4   
-* ROW_NUMBER()   
+* DENSE_RANK()
+并列连续排序，并列即相同的值，相同的值保留重复名次，遇到下一个不同值时，依然按照连续数字排名。 1 2 2 3 4
+* ROW_NUMBER()
 连续排名，即使相同的值，依旧按照连续数字进行排名。 1 2 3 4
 
-## 日期函数   
-* date_add()   
+## 日期函数
+
+* date_add()
 * date_sub()
+
 ```sql
 set @dt = now();
 
@@ -29,14 +32,18 @@ select date_add(@dt, interval -1 day); -- sub 1 day
  select date_add(@dt, interval '01:15:30' hour_second);
  select date_add(@dt, interval '1 01:15:30' day_second);
 ```
-* datediff(date1,date2)   
+
+* datediff(date1,date2)
+
 ```sql
 select datediff('2008-08-08', '2008-08-01'); -- 7
 select datediff('2008-08-01', '2008-08-08'); -- -7
 ```
 
-## 精度函数   
-* round(number,num_digits)四舍五入   
+## 精度函数
+
+* round(number,num_digits)四舍五入
+
 ```sql
     number：需要四舍五入的数字
     num_digits：按此位数对 number 参数进行四舍五入
@@ -50,6 +57,7 @@ select datediff('2008-08-01', '2008-08-08'); -- -7
 ```
 
 ## mysql并发数高
+
 大多数情况下，开发会使用多线程并行处理方法加快任务进度，减少DB执行时间，但是很多人都错估了DB承受能力导致mysql经常有running high情况，而running high 服务器最显著的表示CPU load、idle 异常，并发数设置过高并不能给程序带来任何收益，反而恰恰相反，增加了执行时间。
 
 并发数高影响：
@@ -67,6 +75,7 @@ select datediff('2008-08-01', '2008-08-08'); -- -7
      情况二、如果T2>T1,取N=T2/T1,以这个为基准，测试N个并发下运行时间是否小于T1，如果N个并发还不能满足业务时间要求，则加大一个并发进行再次测试，找到一个满足业务需求的最小并发数。
 
 ## mysql从库延迟
+
 mysql db从库延迟一直是困扰着我们noc dba，几乎每天都会有某个域的延迟告警，大多数情况下，延迟原因为以下两种：   1.批量数据增删改 2.大表加索引操作3.表无主键，一次更新多条记录，对于某些域DB而言，开发可能认为从库没业务延迟可以忽略，但是无规则不成方圆，只有我们按照规范约束数据库行为才能提供更好运维环境。
 
 1.批量数据增删改操作可以拆分，按照每次处理1000条，sleep 0.3s模式循环操作，目前我们线上mysql DB都是5.5.44版本，复制操作是单线程，普通情况一个单线程每秒最大操作数据行数在8k-10k行左右
@@ -75,13 +84,14 @@ mysql db从库延迟一直是困扰着我们noc dba，几乎每天都会有某�
 
 3.表无主键，一次操作100+条记录时，而这条SQL是全表扫描/低效的索引扫描，从库复制时会产生延迟，因为我们线上DB是采用row模式binlog复制，主库更新100条记录，从库就需执行100次update语句，而每个SQL效率极其低下。
 
-
-
 ## mysql服务端/客户端通信协议
+
 半双工 只有一端向另一端发送数据，只有数据全部接受完才能响应(max_allowed_packet客户端和服务端每次通讯最大数据包大小)
+
 * TCP/IP
 
 * 命名管道和共享内存(仅适合单机)
+
 1. 命名管道
 服务器 --enable-named-pipe  客户端 --protocol=pipe
 2. 共享内存
@@ -89,37 +99,46 @@ mysql db从库延迟一直是困扰着我们noc dba，几乎每天都会有某�
 
 * Unix域套接字(仅适合unix单机)  
 
-* 为什么mysql通信协议要选用半双工的形式呢？   
+* 为什么mysql通信协议要选用半双工的形式呢？
+
 1. 实现简单，容易维护
 2. 数据库查询的机制是一个sql请求一个数据回复，半双工就可以满足要求，数据库的性能瓶颈是在sql的执行时间，和数据库的底层实现等有关，和通讯机制关系不大。(个人理解)
 
 ## mysql无法在同一个sql中同时对一张表进行查询和更新
+
 ```sql
 update table_name set a = (select b from table_name where id = 1);  -- 执行报错
 -- 可以通过临时表的方式绕过限制(查询被当做临时表)
 update table_name inner join (select b from table_name where id = 1) table_name1 on c set table_name.a = table_name1.b;
 ```
+
 ## on where having的区别
+
 * on 是在多表连接作为条件去判断两条记录是否匹配的条件
 * where 是在返回结果之前对数据进行过滤的条件，不可以使用聚合函数，可以使用所有列
 * having 一般搭配 group by 使用(也可以单独使用)，对返回的数据集进行每一个组的过滤，可以使用聚合函数，因为是对返回的集合的操作，所以只能操作数据集中有的列
 * 执行顺序 on -> where -> having
 
 ## BufferPool缓冲池
-https://blog.csdn.net/wuhenyouyuyouyu/article/details/93377605  
-https://blog.csdn.net/m0_37892044/article/details/121795586
 
-## MVCC 
-https://blog.csdn.net/qq_38538733/article/details/88902979
+<https://blog.csdn.net/wuhenyouyuyouyu/article/details/93377605>  
+<https://blog.csdn.net/m0_37892044/article/details/121795586>
 
+## MVCC
+
+<https://blog.csdn.net/qq_38538733/article/details/88902979>
 
 ## 行数据的最大值
+
 一条记录占用的最大存储空间是有限制的，除了 BLOB 或者 TEXT 类型的列之外(根据具体行格式判断，Compact存放前768字节，Dynamic等不存放)，其他所有的列（不包括隐藏列和记录头信息）占用的字节长度加起来不能超过 65535 个字节(数据页大小16k)。
-https://zhuanlan.zhihu.com/p/53413773
+<https://zhuanlan.zhihu.com/p/53413773>
 
 ## mysql统计表和实际不符
+
 统计表采用定期同步的方式去落盘数据，会发生统计表(information_schema.tables/show table status等)和实际情况不符的情况。
+
 * 解决方法：将时间设置为实时更新
+
 ```sql
 -- 全局设置实时更新
 SET GLOBAL information_schema_stats_expiry=0;
@@ -131,41 +150,48 @@ SET @@SESSION.information_schema_stats_expiry=0;
 ```
 
 ## 删除数据的方式
+
 * delete from table_name
+
 1. delete 是 DML 语句，只删除数据不删除结构，通过一行一行删除并且记录事务日志，可以回滚。
 2. 执行会触发trigger
 3. 删除数据后innodb和myisam都不会立刻释放空间，只会标记记录为删除状态，删除的空间可重用(可使用optmize table table_name 整理空间碎片)。
     * myisam
     删除前
-    <img src=".\image\21.jpg" alt="21" />    
+    <img src=".\image\21.jpg" alt="21" />
     删除后
-    <img src=".\image\22.jpg" alt="22" />    
+    <img src=".\image\22.jpg" alt="22" />
     可以看出虽然行数和平均的行数长度都为0，但是数据的长度没有改变，只是作为空间碎片的数据重复使用，并没有释放磁盘空间。
     * innodb
     删除前
-    <img src=".\image\23.jpg" alt="23" />    
+    <img src=".\image\23.jpg" alt="23" />
     删除后
-    <img src=".\image\24.jpg" alt="24" />    
+    <img src=".\image\24.jpg" alt="24" />
     可以看出虽然行数和平均的行数长度都为0，但是数据的长度没有改变(删除后的空间在innodb引擎不作为空间碎片)。
 4. 执行后不重置 auto_increment
 
 * truncate table table_name
+
 1. truncate 是 DDL 语句，速度快，执行后无法回滚。
 2. 不触发trigger
 3. innodb和myisam引擎都一致，执行后立即释放磁盘空间
 4. 执行后重置 auto_increment
 
 * drop table table_name
+
 1. drop 是 DDL 语句
 2. 执行后立即释放磁盘空间
-3. 执行后删除表的数据、结构、触发器等，依赖于该表的存储过程/函数状态变为 invalid 
+3. 执行后删除表的数据、结构、触发器等，依赖于该表的存储过程/函数状态变为 invalid
 
 ## 自适应哈希索引(AHI)
-自适应哈希索引是mysql内部一种加快查询的优化措施，由innodb引擎自己判断构建，只能针对等值查询。   
+
+自适应哈希索引是mysql内部一种加快查询的优化措施，由innodb引擎自己判断构建，只能针对等值查询。
 [MySQL AHI 实现解析](https://cloud.tencent.com/developer/article/1004516)
 
 ## 其他索引
+
 ## 多维索引
+
 * [空间填充曲线](https://www.cnblogs.com/tgzhu/p/8286616.html)
 * 网格文件
 * 分段散列
@@ -173,48 +199,57 @@ SET @@SESSION.information_schema_stats_expiry=0;
 * kd-树
 * 四叉树
 * R-树
-* 位图索引   
+* 位图索引
 [【高级数据库】第二章 第04讲 多维索引](https://blog.csdn.net/qq_36426650/article/details/103324224)
 
 ## 行式存储 VS 列式存储 ? [OLTP VS OLAP](https://github.com/Vonng/ddia/blob/master/ch3.md#%E4%BA%8B%E5%8A%A1%E5%A4%84%E7%90%86%E8%BF%98%E6%98%AF%E5%88%86%E6%9E%90)
+
 ## 行式存储(OLTP)
+
 * 需要频繁更新和插入数据
 * 记录列不多，没有复杂的分析场景
 
 在高层次上，我们看到存储引擎分为两大类：针对 事务处理（OLTP） 优化的存储引擎和针对 在线分析（OLAP） 优化的存储引擎。这两类使用场景的访问模式之间有很大的区别：  
+
 * OLTP 系统通常面向最终用户，这意味着系统可能会收到大量的请求。为了处理负载，应用程序在每个查询中通常只访问少量的记录。应用程序使用某种键来请求记录，存储引擎使用索引来查找所请求的键的数据。硬盘查找时间往往是这里的瓶颈。
 * 数据仓库和类似的分析系统会少见一些，因为它们主要由业务分析人员使用，而不是最终用户。它们的查询量要比 OLTP 系统少得多，但通常每个查询开销高昂，需要在短时间内扫描数百万条记录。硬盘带宽（而不是查找时间）往往是瓶颈，列式存储是针对这种工作负载的日益流行的解决方案。
 
 ## [列式存储(OLAP)](https://github.com/Vonng/ddia/blob/master/ch3.md#%E4%BA%8B%E5%8A%A1%E5%A4%84%E7%90%86%E8%BF%98%E6%98%AF%E5%88%86%E6%9E%90)
+
 ## 优势
+
 * 针对不同数据类型压缩数据
 * 不读取无效数据，适用于列非常多的场景
 * 提高有效数据读取效率，减少不需要数据的读取
-* 对数据按不同纬度排序处理应对不同场景的分析操作+数据备份   
+* 对数据按不同纬度排序处理应对不同场景的分析操作+数据备份
 
 ## 中间件
+
 * Hbase
 * Druid
 * Cassandra
-* clickhouse   
+* clickhouse
 [列存数据库，不只是列式存储](https://cn.kyligence.io/blog/%E5%88%97%E5%AD%98%E6%95%B0%E6%8D%AE%E5%BA%93%EF%BC%8C%E4%B8%8D%E5%8F%AA%E6%98%AF%E5%88%97%E5%BC%8F%E5%AD%98%E5%82%A8/)
 
 ## SQL语句执行顺序
-<img src=".\image\66.jpg" alt="66" />    
+
+<img src=".\image\66.jpg" alt="66" />
 
 ## 锁错误排查方式
-<img src=".\image\68.jpg" alt="68" />    
+
+<img src=".\image\68.jpg" alt="68" />
 
 ## 基本概念
+
 * 聚簇索引
 * 索引覆盖
 * 索引下推
 * MMR
-<img src=".\image\87.jpg" alt="87" />    
-<img src=".\image\88.jpg" alt="88" />    
-
+<img src=".\image\87.jpg" alt="87" />
+<img src=".\image\88.jpg" alt="88" />
 
 ## mysql问题合集
+
 * char和varchar
 * datetime和timestamp
 * uuid适合作为主键吗？
@@ -228,34 +263,61 @@ SET @@SESSION.information_schema_stats_expiry=0;
 * Statement和PrepareStatement
 * mysql常见引擎
 * 三大范式
-<img src=".\image\80.jpg" alt="80" />    
-<img src=".\image\81.jpg" alt="81" />    
-<img src=".\image\82.jpg" alt="82" />    
-<img src=".\image\83.jpg" alt="83" />    
-<img src=".\image\84.jpg" alt="84" />    
-<img src=".\image\85.jpg" alt="85" />    
-<img src=".\image\86.jpg" alt="86" />    
+<img src=".\image\80.jpg" alt="80" />
+<img src=".\image\81.jpg" alt="81" />
+<img src=".\image\82.jpg" alt="82" />
+<img src=".\image\83.jpg" alt="83" />
+<img src=".\image\84.jpg" alt="84" />
+<img src=".\image\85.jpg" alt="85" />
+<img src=".\image\86.jpg" alt="86" />
 
 ## 查询语句执行过程
-<img src=".\image\89.jpg" alt="89" />    
+
+<img src=".\image\89.jpg" alt="89" />
 
 ## 主从同步
-<img src=".\image\90.jpg" alt="90" />    
+
+<img src=".\image\90.jpg" alt="90" />
 
 ## 正排索引和倒排索引
+
 * 正排索引以文档为关键字，倒排索引以字或词为索引
 
-## 热点行优化
-[热点行优化](https://help.aliyun.com/document_detail/178149.html)
+## 重复插入数据
 
-##  重复插入数据
 ### ON DUPLICATE KEY UPDATE(mysql独有语法)
+
 插入数据时，如果表中存在对应主键数据，会执行 ON DUPLICATE KEY UPDATE后续更新操作，若后续字段有发生更新，返回2(用于区分不同情况)，若覆盖更新的字段和原字段数据一致，返回0；如果表中没有该主键，插入数据返回1。
+
 ```sql
 -- 需要使用主键判断
 INSERT INTO table_name (`id`, `create_time`, `update_time`) VALUES (2, 0, 0) on DUPLICATE KEY UPDATE create_time=2 , update_time=1;
 ```
+
 [ON DUPLICATE KEY UPDATE 用法与说明](https://blog.csdn.net/zyb2017/article/details/78449910)
+
 ### REPLACE
+
 插入数据时，如果表中存在对应主键数据，会先删除记录，再插入。
 [MySQL replace语句](https://www.yiibai.com/mysql/replace.html)
+
+## GTID(Global Transaction Identifier)
+
+事务全局标识符，分为两部分：服务器UUID唯一标识符+ID，在row或者mixed模式生效，事务提交后会写入binlog递增生成ID，用于全局(多服务器)唯一表示事务。在单源头服务器中，gtid是递增的，多源头服务器中，因为在同步数据时会按源数据的gtid写入从数据库，所以gtid是乱序的。
+
+### 作用
+
+#### 主从故障切换
+
+* 选取新主
+传统模式下通过日志的位置和日志的偏移量(那个文件同步到哪里)衡量从数据库数据同步完整性，这个过程复杂且易错，gtid可以简化这个过程。
+* 指定从服务器复制位置
+传统模式下需要为每个从服务器设置同步新位置，gtid模式下，只需要同步executed_gtid_set没有执行过的事务即可。
+
+#### 主从数据一致性
+
+gtid_executed->执行过的gtid，通过取主从服务器集合差集，判断主从数据一致性情况
+
+#### 多机房同步数据回环问题
+
+通过executed_gtid_set判断事务是否执行过。

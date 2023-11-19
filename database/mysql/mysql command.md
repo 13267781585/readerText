@@ -1,15 +1,26 @@
-## mysql command
-##### 登录客户端
+# mysql command
+
+## 登录客户端
+
 ```sql
 mysql -u (用户名) -h (mysql服务所在地址) -P (可选默认3306 指定端口号) -p 数据库
 ```
 
-##### 运行进程
+## docker登录mysql
+
+docker ps 查看docker运行的程序
+启动mysql
+docker exec -it {docker_mysql_name} bash
+mysql -u root -p
+
+## 运行进程
+
 ```sql
 show processlist;
 ```
 
-##### 表的数据统计
+## 表的数据统计
+
 ```sql
 --表的基本信息
 desc table_name;
@@ -21,7 +32,8 @@ show table status;
 show index from table_name;
 ```
 
-##### mysql变量配置
+## mysql变量配置
+
 ```sql
 -- 使用index dive的限制 -- 查询区间个数过多 精确统计或者估算  
 eq_range_index_dive_limit
