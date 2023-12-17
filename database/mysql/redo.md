@@ -1,16 +1,20 @@
 # Redo Log
 
+<img src=".\image\92.jpg" alt="92" />
+
 ## redolog作用
 
 ### 宕机恢复
 
+因为bin log是追加写，宕机重启后无法判断哪些数据有没有刷盘，而redo log是循环写，只会存放没有刷盘的事务，宕机后只需要把redo log加载到内存中就行。
+
 ### 提高数据刷盘效率
 
-数据页随机io->redolog顺序io
-redolog数据小
-降低刷盘频率
+* 数据页随机io->redolog顺序io
+* redolog数据小
+* 降低刷盘频率
 
-## 触发redo log刷盘
+## 触发redo log刷盘时机
 
 mysql通过参数innodb_flush_log_at_trx_commit控制redolog刷盘策略：
 
@@ -30,5 +34,5 @@ mysql通过参数innodb_flush_log_at_trx_commit控制redolog刷盘策略：
 
 ### 为什么用redolog同步数据延迟比binlog小？
 
-因为事务中只要修改了数据就会记录redolog，binlog只有在事物提交后才记录，使用redolog做主从同步，在数据修改后就可以进行同步，不需要等到事务提交后，所以主从不一致延迟大大减少。
+因为事务中只要修改了数据就会记录redolog，binlog只有在事务提交后才记录，使用redolog做主从同步，在数据修改后就可以进行同步，不需要等到事务提交后，所以主从不一致延迟大大减少。
 <https://ost.51cto.com/posts/20428>

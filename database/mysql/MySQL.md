@@ -321,3 +321,11 @@ gtid_executed->执行过的gtid，通过取主从服务器集合差集，判断�
 #### 多机房同步数据回环问题
 
 通过executed_gtid_set判断事务是否执行过。
+
+## NULL
+
+表示数据不存在，意味着这个字段没有值，和类型的空值不相同。
+
+* NULL !=NULL
+* 会被汇总函数忽略
+* 排序时，根据 SQL_MODE 变量(NULLS_FIRST||NULLS_LAST)排序
