@@ -133,8 +133,8 @@ MySQL 需要创建临时表来存储查询的结果，临时表可能是内存�
 5. Using index condition 索引下推
 6. Using join buffer (Block Nested Loop), Using join buffer (Batched Key Access)
 使用缓存和对应连接算法提高查询速度
-7. Using MMR
-使用 mmr 策略
+7. Using MRR
+使用 mrr 策略
 
 ## 使用where条件的三种方式
 
@@ -242,22 +242,29 @@ ii. 单次传输排序
 * union + limit 先在子查询 limit 再 联合起来 limit
 
 15. limit offset num
+当 offset 很大时，性能越来越差，因为mysql需要把数据从中拿取num条后取出num条，但是前offset是没有用的
 
-* 当 offset 很大时，性能越来越差，因为mysql需要找出非常多的数据从中拿取num条，但是前offset是没有用的
 * 优化方案
-i. 先不查询所有列，尽可能利用索引覆盖，然后在做一次自关联查出所有列(利用索引去消除排序和分组的额外消耗)
+i. 延迟关联
+利用索引覆盖先查出offset后的数据的id，然后采用自连接方式取数据，减少回表次数。
 
 ```sql
-select a,b,c from table_name order by a limit m n;
-select a,b,c from table_name name inner join (select id from table_name order by a limit m n) name1 on name.id = name1.id
+// (b,a)是索引
+// 需要 (m+1)*n次回表
+select * from table_name where b = 1 order by a limit m n;
+// 需要 n次回表
+select * from table_name name inner join (select id from table_name where b = 1 order by a limit m n) name1 on name.id = name1.id
 ```
 
-ii. 利用索引列连续的特点进行快速查询
+ii. 记录游标(干掉offset)
 
 ```sql
+select * from table_name where b = 1 order by a limit m n;
 -- 查询的列中有索引列且是连续的，在每次查询后可以记录下上次的 索引值，作为范围查询条件
-select  a,b,c from table_name where a between m and n;
+select * from table_namewhere b = 1 and a >= 123 order by a limit 10;
 ```
+
+实际应用中每次可以把后续页面游标查询出来，例如页面显示后面5页按钮，可以查61条数据，用每一页面第一条生成页面按钮带上游标的参数。
 
 iii. 汇总表
 如果sql的操作比较繁杂，优化困难，可以建立一张汇总表，每次查询可以直接获取数据不需要额外总计，在数据变更时利用mq进行触发统计
@@ -317,7 +324,7 @@ In most cases, a DISTINCT clause can be considered as a special case of GROUP BY
 
 ## in的优化
 
-in子查询会在物化表、exists、semi连接等方案中选取成本最小的执行
+普通in子查询会使索引失效，mysql会在物化表、exists、semi连接等方案中选取成本最小的执行(转化为可以使用索引的方式)
 
 ```sql
 CREATE TABLE single_table (

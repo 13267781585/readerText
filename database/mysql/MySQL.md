@@ -2,12 +2,19 @@
 
 ## 排名内置函数
 
+`8.0以上版本使用`
+
 * RANK()  
  并列跳跃排名，并列即相同的值，相同的值保留重复名次，遇到下一个不同值时，跳跃到总共的排名。 1 2 2 4 5  
 * DENSE_RANK()
 并列连续排序，并列即相同的值，相同的值保留重复名次，遇到下一个不同值时，依然按照连续数字排名。 1 2 2 3 4
 * ROW_NUMBER()
 连续排名，即使相同的值，依旧按照连续数字进行排名。 1 2 3 4
+
+```sql
+// 需要配合 over 使用，partition by分区，order by是排序
+select a,b,rank() over(partition by a order by a desc) as 'rank' from table_name
+```
 
 ## 日期函数
 
@@ -172,7 +179,7 @@ SET @@SESSION.information_schema_stats_expiry=0;
 
 * truncate table table_name
 
-1. truncate 是 DDL 语句，速度快，执行后无法回滚。
+1. truncate 是 DDL 语句，速度快(不记录undo日志)，执行后无法回滚。
 2. 不触发trigger
 3. innodb和myisam引擎都一致，执行后立即释放磁盘空间
 4. 执行后重置 auto_increment
@@ -244,7 +251,7 @@ SET @@SESSION.information_schema_stats_expiry=0;
 * 聚簇索引
 * 索引覆盖
 * 索引下推
-* MMR
+* MRR
 <img src=".\image\87.jpg" alt="87" />
 <img src=".\image\88.jpg" alt="88" />
 
@@ -329,3 +336,9 @@ gtid_executed->执行过的gtid，通过取主从服务器集合差集，判断�
 * NULL !=NULL
 * 会被汇总函数忽略
 * 排序时，根据 SQL_MODE 变量(NULLS_FIRST||NULLS_LAST)排序
+
+## datetime vs timestamp
+
+* datetime需要5-8字节，timestamp需要4字节
+* timestamp范围 1970-2023，datetime没有限制
+* timestamp使用utc时区格式存储，使用时根据不同时区转换，datetime不跟随时区变化
