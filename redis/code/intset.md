@@ -1,6 +1,7 @@
 # intset源码
 
 ## 结构
+
 ```c
 typedef signed char    int8_t;
 typedef unsigned int uint32_t;
@@ -12,11 +13,15 @@ typedef struct intset {
     int8_t contents[];
 } intset;
 ```
-### 为什么encoding和length不使用花费更小的int去存储？   
+
+### 为什么encoding和length不使用花费更小的int去存储？
+
 猜测：
+
 1. 考虑内存排列，32位和64位这两个变量的排列都不会影响到contents数据。
 
 ## 初始化
+
 ```c
 intset *intsetNew(void) {
     intset *is = zmalloc(sizeof(intset));
@@ -28,9 +33,11 @@ intset *intsetNew(void) {
 ```
 
 ## 添加
+
 * 是否需要升级编码
 * 如果已经存在数据，直接返回
 * 找到插入的位置，移动后续数据腾出空间插入数据
+
 ```c
 // success:添加是否成功 1成功 0失败
 intset *intsetAdd(intset *is, int64_t value, uint8_t *success) {
@@ -69,6 +76,7 @@ static intset *intsetUpgradeAndAdd(intset *is, int64_t value) {
 
     /* First set new encoding and resize */
     is->encoding = intrev32ifbe(newenc);
+    // 重新申请数据，新的数组长度length*数据长度
     is = intsetResize(is,intrev32ifbe(is->length)+1);
 
     //从后往前迁移数据，为了不覆盖数据
@@ -129,8 +137,10 @@ static uint8_t intsetSearch(intset *is, int64_t value, uint32_t *pos) {
 ```
 
 ## 删除
+
 * 找到对应元素位置，移动后续数据覆盖删除数据
 * 缩容
+
 ```c
 intset *intsetRemove(intset *is, int64_t value, int *success) {
     uint8_t valenc = _intsetValueEncoding(value);
@@ -153,10 +163,13 @@ intset *intsetRemove(intset *is, int64_t value, int *success) {
 ```
 
 ## API和复杂度
+
 <img alt="11" src="./image/11.png"/>
 
 ## Q&A
+
 ### 升级机制的好处
+
 <img alt="10" src="./image/10.png"/>  
 
-摘抄自《Redis设计与实现》 
+摘抄自《Redis设计与实现》

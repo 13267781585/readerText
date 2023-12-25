@@ -1,21 +1,32 @@
 # ziplist源码
+>
 >* ziplist是为了解决小数据使用quicklist浪费内存的问题(节点指针占用空间远远大于数据)  
->* ziplist没有预容量，每次增删都设计内存重新分配   
+>* ziplist没有预容量，每次增删都设计内存重新分配
 >* 有小概率会有连锁更新的风险
 
 ## 构成
+
 <img alt="2" src="./image/2.png"/>
 <img alt="3" src="./image/3.png"/>
 <img alt="4" src="./image/4.png"/>
-<img alt="7" src="./image/7.png"/>
 
 <img alt="5" src="./image/5.png"/>
 
+### previous_entry_length
+
+占用1字节或5字节，用于记录前一个节点长度。
+
+* 如果前一个节点长度小于254字节，占用1字节
+* 如果前一个节点长度大于等于254字节，占用5字节，第一个字节固定 0xFE
+
 ## 连锁更新
+
 <img alt="6" src="./image/6.png"/>
 
 ## 初始化->压缩的字符串
+
 源代码巧妙利用了define，用带有语义的变量代替冗杂的指针操作，大大提高了代码的可读性。通过指针位移操作，设置不用参数。
+
 ```c
 //大小端转换 使用小端
 #if (BYTE_ORDER == LITTLE_ENDIAN)
@@ -60,6 +71,7 @@ unsigned char *ziplistNew(void) {
 ```
 
 ## 获取
+
 ```c
 //用于方便ziplist操作的结构体
 typedef struct zlentry {
@@ -72,6 +84,7 @@ typedef struct zlentry {
     unsigned char *p;            //数据指针，指向previous_entry_length
 } zlentry;
 ```
+
 ```c
 //获取指针p指向的数据，若是字节数组，则将数组的指针存入sstr，长度存入slen，若是整数，则存入sval。
 //p为空 || p指向尾端，返回0，否则返回1
@@ -163,6 +176,7 @@ static inline int zipEntrySafe(unsigned char* zl, size_t zlbytes, unsigned char 
 #undef OUT_OF_RANGE
 }
 ```
+
 ```c
 static inline void zipEntry(unsigned char *p, zlentry *e) {
     ZIP_DECODE_PREVLEN(p, e->prevrawlensize, e->prevrawlen);
@@ -261,6 +275,7 @@ static inline void zipEntry(unsigned char *p, zlentry *e) {
 ```
 
 ## 查询
+
 ```c
 //zl压缩表 p指向数据 vstr查询的字节数组(字符串或者整形) vlen字节数组长度 skip跳跃查询
 unsigned char *ziplistFind(unsigned char *zl, unsigned char *p, unsigned char *vstr, unsigned int vlen, unsigned int skip) {
@@ -350,8 +365,11 @@ int zipTryEncoding(unsigned char *entry, unsigned int entrylen, long long *v, un
 ```
 
 ## 插入
+
 ### 流程
+
 先计算出插入需要的各种参数，再根据插入后新的长度扩容字符数据，移动数据腾出插入的空间，最后设置插入的数据。
+
 ```c
 unsigned char *__ziplistInsert(unsigned char *zl, unsigned char *p, unsigned char *s, unsigned int slen) {
     //curlen现在的ziplist长度 reqlen插入的数据需要的长度 newlen插入后新的ziplist长度
@@ -466,6 +484,7 @@ unsigned char *__ziplistInsert(unsigned char *zl, unsigned char *p, unsigned cha
     return zl;
 }
 ```
+
 ```c
 //设置previous_length字段-5字节
 int zipStorePrevEntryLengthLarge(unsigned char *p, unsigned int len) {
@@ -495,8 +514,11 @@ unsigned int zipStorePrevEntryLength(unsigned char *p, unsigned int len) {
 ```
 
 ## 连锁更新
+
 ### 流程
+
 先遍历计算出需要扩容的节点数量和长度，然后扩容list，将后面不需要扩容的节点向后移动，然后倒序遍历，移动需要扩容的节点。
+
 ```c
 unsigned char *__ziplistCascadeUpdate(unsigned char *zl, unsigned char *p) {
     zlentry cur;
@@ -609,10 +631,12 @@ unsigned char *__ziplistCascadeUpdate(unsigned char *zl, unsigned char *p) {
 }
 ```
 
-
 ## 删除
+
 ### 流程
+
 计算出要删除的字节，记录删除的边界节点，向前移动后续未被删除的节点，需要考虑是否将整个尾部删除。
+
 ```c
 //为什么用 **p？
 unsigned char *ziplistDelete(unsigned char *zl, unsigned char **p) {
@@ -697,6 +721,7 @@ unsigned char *__ziplistDelete(unsigned char *zl, unsigned char *p, unsigned int
 ```
 
 ## 获取ziplist节点数量
+
 ```c
 unsigned int ziplistLen(unsigned char *zl) {
     unsigned int len = 0;
@@ -720,11 +745,11 @@ unsigned int ziplistLen(unsigned char *zl) {
 ```
 
 ## Q&A
+
 ### 为什么选择插入首部，而不是尾部，插入尾部可以省去复制的成本和减少连锁扩容风险？
+
 * 连锁扩容发生的几率较小
-* 插入的数据被认为是更可能将来会访问的，所以存入首部，可以充分利用缓存局部性原理？   
+* 插入的数据被认为是更可能将来会访问的，所以存入首部，可以充分利用缓存局部性原理？
 
-
-
-[Redis源码分析（四）—— ziplist的设计与实现](https://blog.csdn.net/pcj_888/article/details/122227334)   
+[Redis源码分析（四）—— ziplist的设计与实现](https://blog.csdn.net/pcj_888/article/details/122227334)
 摘抄自《Redis设计与实现》

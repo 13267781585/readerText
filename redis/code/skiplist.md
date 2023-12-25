@@ -1,8 +1,10 @@
 # 跳表
+
 ## 结构
+
 <img alt="8" src="./image/8.png"/>
 
-```c 
+```c
 typedef struct zskiplistNode {
     //数据 char *->sds
     sds ele;
@@ -28,6 +30,7 @@ typedef struct zskiplist {
 ```
 
 ## 初始化
+
 ```c
 zskiplist *zslCreate(void) {
     int j;
@@ -48,9 +51,24 @@ zskiplist *zslCreate(void) {
 }
 ```
 
+## 随机层数
+
+跳表最大层数32，循环每次给层数+1，概率为1/4，层数越高概率越小，这样设计使得底层节点更加密集，高层稀疏，提高搜索效率。
+
+```c
+int zslRandomLevel(void) {
+    int level = 1;
+    while ((random()&0xFFFF) < (ZSKIPLIST_P * 0xFFFF))
+        level += 1;
+    return (level<ZSKIPLIST_MAXLEVEL) ? level : ZSKIPLIST_MAXLEVEL;
+}
+```
+
 ## 插入
+
 * 随机生成插入数据的层级
 * 从高层向下寻找到新节点插入的位置，并记录插入位置前置节点+统计排名信息
+
 ```c
 zskiplistNode *zslInsert(zskiplist *zsl, double score, sds ele) {
     //update每一层级插入位置的前置节点
@@ -120,6 +138,7 @@ zskiplistNode *zslInsert(zskiplist *zsl, double score, sds ele) {
 ```
 
 ## 删除
+
 ```c
 int zslDelete(zskiplist *zsl, double score, sds ele, zskiplistNode **node) {
     zskiplistNode *update[ZSKIPLIST_MAXLEVEL], *x;
@@ -178,10 +197,17 @@ void zslDeleteNode(zskiplist *zsl, zskiplistNode *x, zskiplistNode **update) {
     zsl->length--;
 }
 ```
+
 ## 跳跃表API和复杂度
+
 <img alt="9" src="./image/9.png"/>
 
 ## Question
-### 跳表span解析
+
+### 跳表如何实现排名?(跳表span解析)
+
+每个节点变量span保存这一层级中到下一个节点中间跨越的节点，在搜索的过程中，从上层到下层遍历，累加span直至找到目标节点，就可以得到目标数据的排名。
+好处：每次增删节点不需要全量更新节点的排名，只需要变更前置节点的span变量即可。
 [如何理解redis跳表源码中的span？](https://blog.csdn.net/qq_19648191/article/details/85381769)  
+
 摘抄自《Redis设计与实现》

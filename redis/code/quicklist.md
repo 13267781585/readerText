@@ -1,7 +1,9 @@
 # quicklist
+
 <img src="./image/21.png" alt="21" />
 
 ## 结构
+
 ```c
 typedef struct quicklist {
     quicklistNode *head;
@@ -42,6 +44,7 @@ typedef struct quicklistNode {
     unsigned int extra : 10; /* more bits to steal for future usage */
 } quicklistNode;
 ```
+
 ```c
 //迭代器
 typedef struct quicklistIter {
@@ -71,6 +74,7 @@ typedef struct quicklistEntry {
 ```
 
 ## 创建quicklist
+
 ```c
 quicklist *quicklistCreate(void) {
     struct quicklist *quicklist;
@@ -94,6 +98,7 @@ quicklist *quicklistNew(int fill, int compress) {
 ```
 
 ## 销毁quicklist
+
 ```c
 void quicklistRelease(quicklist *quicklist) {
     unsigned long len;
@@ -126,7 +131,9 @@ void quicklistBookmarksClear(quicklist *ql) {
 ```
 
 ## 插入数据
+
 ### 头部插入
+
 ```c
 //往头部插入一个数据项 返回值:0->插入已存在的头节点 1->插入新创建的头节点
 int quicklistPushHead(quicklist *quicklist, void *value, size_t sz) {
@@ -214,7 +221,9 @@ _quicklistNodeSizeMeetsOptimizationRequirement(const size_t sz,
 ```
 
 ### 尾部插入
+
 和首部插入原理一致
+
 ```c
 int quicklistPushTail(quicklist *quicklist, void *value, size_t sz) {
     quicklistNode *orig_tail = quicklist->tail;
@@ -238,7 +247,9 @@ int quicklistPushTail(quicklist *quicklist, void *value, size_t sz) {
 ```
 
 ### 在指定位置插入数据
+
 在指定位置插入数据会比在头尾插入复杂，因为需要考虑插入的位置所在的ziplist是否已经满了，满了需要判断插入的是ziplist的位置时中间，那需要将这个节点分为两个；如果插入的是末尾，需要判断目标下一个节点的ziplist是否满了；如果插入的是头部，需要判断上一个节点的ziplist是否满了；再根据不同情况处理。
+
 ```c
 /*
     在entry(现存)的后面 or 前面(after)插入数据
@@ -369,6 +380,7 @@ REDIS_STATIC void _quicklistInsert(quicklist *quicklist, quicklistEntry *entry,
     quicklist->count++;
 }
 ```
+
 ```c
 /*
     将node的ziplist按offset位置切分生存两个节点，返回哪一个节点取决于after参数：
@@ -407,6 +419,7 @@ REDIS_STATIC quicklistNode *_quicklistSplitNode(quicklistNode *node, int offset,
     return new_node;
 }
 ```
+
 ```c
 //节点合并操作，将center节点两侧各两个节点进行11合并
 REDIS_STATIC void _quicklistMergeNodes(quicklist *quicklist,
@@ -506,6 +519,7 @@ REDIS_STATIC quicklistNode *_quicklistZiplistMerge(quicklist *quicklist,
 ```
 
 ## 插入节点
+
 ```c
 REDIS_STATIC void _quicklistInsertNodeBefore(quicklist *quicklist,
                                              quicklistNode *old_node,
@@ -519,6 +533,7 @@ REDIS_STATIC void _quicklistInsertNodeAfter(quicklist *quicklist,
     __quicklistInsertNode(quicklist, old_node, new_node, 1);
 }
 ```
+
 ```c
 //在old_node的前面or后面插入new_node节点 after:1->后面 0->前面
 REDIS_STATIC void __quicklistInsertNode(quicklist *quicklist,
@@ -560,8 +575,11 @@ REDIS_STATIC void __quicklistInsertNode(quicklist *quicklist,
 ```
 
 ## 查找
+
 ### 查找指定位置数据
+
 先找到目标数据项存放的节点，再从ziplist中解析出数据，存放到entry中返回。
+
 ```c
 //idx:大于等于0，表示正向查找第idx个数据项，0表示head；小于0，表示反向查找第idx个数据项，-1表示tail
 //结果存放在entry中
@@ -623,8 +641,11 @@ int quicklistIndex(const quicklist *quicklist, const long long idx,
 ```
 
 ## 数据解压和压缩
+
 ### 压缩
+
 需要压缩的两种情况：
+
 * 节点需要修改，先被解压缩，这时候compress=1，操作后需要压缩，这时候会判断compress的值是否为1，直接压缩节点即可
 * 插入了新的节点，需要扫描整个quicklist，大致过程：最开始quicklist中节点个数小于compress*2，不需要压缩，直接跳过，当加入第compress*2+1个节点的时候，从左右两端像中间遍历compress次，把节点数据解压缩，停止时forward和reserve指向的节点就是最后加入的节点，需要压缩，随后不停的加入数据，重复上述流程，只需要压缩遍历停止时forward和reserve指向的节点，因为内侧的数据在上一次遍历时候已经压缩了，因为插入节点的位置是任意的，这里还需要额外记录插入的节点是否被遍历到，如果没有，说明位置在内侧，需要被压缩。
 
@@ -710,6 +731,7 @@ REDIS_STATIC void __quicklistCompress(const quicklist *quicklist,
 ```
 
 ### 解压
+
 ```c
 #define quicklistDecompressNode(_node)                                         \
     do {                                                                       \
@@ -718,6 +740,7 @@ REDIS_STATIC void __quicklistCompress(const quicklist *quicklist,
         }                                                                      \
     } while (0)
 ```
+
 ```c
 REDIS_STATIC int __quicklistDecompressNode(quicklistNode *node) {
     void *decompressed = zmalloc(node->sz);
@@ -733,6 +756,7 @@ REDIS_STATIC int __quicklistDecompressNode(quicklistNode *node) {
     return 1;
 }
 ```
+
 ```c
 #define quicklistDecompressNodeForUse(_node)                                   \
     do {                                                                       \
@@ -744,6 +768,7 @@ REDIS_STATIC int __quicklistDecompressNode(quicklistNode *node) {
 ```
 
 ## 删除
+
 ```c
 //删除entry中记录的数据
 void quicklistDelEntry(quicklistIter *iter, quicklistEntry *entry) {
@@ -796,10 +821,12 @@ REDIS_STATIC int quicklistDelIndex(quicklist *quicklist, quicklistNode *node,
 }
 ```
 
-
 ## 遍历
+
 快表使用迭代器进行遍历，在使用迭代器遍历过程中，如果插入了新的数据，需要重新获取迭代器；可以使用quicklistDelEntry删除数据。
+
 ### 迭代器使用方式
+
 ```c
   iter = quicklistGetIterator(quicklist,<direction>);
   quicklistEntry entry;
@@ -810,7 +837,9 @@ REDIS_STATIC int quicklistDelIndex(quicklist *quicklist, quicklistNode *node,
            [[ use entry.longval ]]
   }
 ```
+
 ### 创建迭代器
+
 ```c
 //获取迭代器 direction:遍历方向
 quicklistIter *quicklistGetIterator(const quicklist *quicklist, int direction) {
@@ -834,6 +863,7 @@ quicklistIter *quicklistGetIterator(const quicklist *quicklist, int direction) {
     return iter;
 }
 ```
+
 ```c
 //创建指定位置的迭代器
 quicklistIter *quicklistGetIteratorAtIdx(const quicklist *quicklist,
@@ -852,7 +882,9 @@ quicklistIter *quicklistGetIteratorAtIdx(const quicklist *quicklist,
     }
 }
 ```
+
 ### 移动迭代器
+
 ```c
 //将迭代器指向的数据信息存储到entry中
 int quicklistNext(quicklistIter *iter, quicklistEntry *entry) {
@@ -919,7 +951,9 @@ int quicklistNext(quicklistIter *iter, quicklistEntry *entry) {
     }
 }
 ```
+
 ### 销毁迭代器
+
 ```c
 //因为每次遍历都会先解压缩数据，所以销毁迭代器时先把指向的节点数据压缩，然后释放迭代器内存即可
 void quicklistReleaseIterator(quicklistIter *iter) {
@@ -931,9 +965,14 @@ void quicklistReleaseIterator(quicklistIter *iter) {
 ```
 
 ## Q&A
+
 ### 进行节点合并的意义
+
 链表两端的操作多，中间数据使用比较少，合并有利于减少节点数量，使得节点的数据更加紧凑，提高缓存的作用，提高读取效率。
 
+### LZF压缩算法
 
-[快表是什么](https://github.com/guozhaoxin/redis-src-code/blob/main/objects/quicklist.md)   
-摘抄自《Redis设计与实现》 
+压缩率不突出，但是压缩和解压缩速度非常快。
+
+[快表是什么](https://github.com/guozhaoxin/redis-src-code/blob/main/objects/quicklist.md)
+摘抄自《Redis设计与实现》

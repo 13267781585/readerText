@@ -757,7 +757,13 @@ SET key1 "value" prvdata "data"
 4. 易于实现和使用：实现相对简单，容易理解和使用，适合于大规模的分布式系统。
 
 ### 为什么scan采用高位顺序的遍历方式？
+
 因为在遍历map过程中可能会发生扩容，如果采用低位顺序方式，会产生很多重复遍历的数据，采用高位顺序方式，遍历的位置高低散列，可以减少扩容带来的影响
 
-[美团针对Redis Rehash机制的探索和实践](https://tech.meituan.com/2018/07/27/redis-rehash-practice-optimization.html)   
+### 为什么不使用红黑树优化哈希冲突
+* 简单：链地址法实现和维护简单
+* 内存开销：红黑树数据结构需要额外内存
+* 性能考虑：红黑树搜索时间复杂度O(log(N))，链地址搜索时间复杂度O(N)，配合上良好扩容机制，在大多数情况下性能差别不明显
+
+[美团针对Redis Rehash机制的探索和实践](https://tech.meituan.com/2018/07/27/redis-rehash-practice-optimization.html)
 摘抄自《Redis设计与实现》
