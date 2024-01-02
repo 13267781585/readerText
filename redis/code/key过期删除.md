@@ -1,8 +1,11 @@
 # key过期删除策略
+
 redis中对过期key采用`定期+惰性`策略。
 
 ## 惰性删除
+
 在对key进行读写前后调用`expireIfNeeded`方法判断是否过期，会根据设置的过期key策略同步或异步(4.0+)清除。
+
 ```c
 int expireIfNeeded(redisDb *db, robj *key) {
     //判断key是否过期，不过期直接返回
@@ -36,7 +39,13 @@ void deleteExpiredKeyAndPropagate(redisDb *db, robj *keyobj) {
 ```
 
 ## 定期删除
-redis定时任务会定期抽样扫描过期键，扫描频率由`hz`配置项决定(1s/hz)。
+
+redis定时任务会定期抽样扫描过期键，扫描频率由`hz`配置项决定(1s/hz)。分为两种模式，快速清除和慢速清除：
+
+* 快速清除：短时间内不限制资源快速回收
+* 慢速清除：长时间限制资源慢回收
+正常情况下慢速清除模式可以满足回收需求，只有在过期key数量大，且慢速回收频繁超时，才会启动快速回收。
+
 ```c
 /*
     有两种扫描模式：快速 or 慢速，主要是扫描时间的限制
@@ -72,11 +81,11 @@ void activeExpireCycle(int type) {
     long long start = ustime(), timelimit, elapsed;
 
     if (type == ACTIVE_EXPIRE_CYCLE_FAST) {
-        //如果上一个fast循环还没完成，不回开启新的一轮，除非：当前存在的过期键比例不可接受且
+        //timelimit->是否因为超时退出，如果上一次快速清理不是因为超时退出且系统的过期数据比例小于设定的值，说明过期数据不多，直接返回
         if (!timelimit_exit &&
             server.stat_expired_stale_perc < config_cycle_acceptable_stale)
             return;
-
+        // 如果距离上次快速清理时间小于两倍快速清理时间，直接返回
         if (start < last_fast_cycle + (long long)config_cycle_fast_duration*2)
             return;
 
@@ -86,11 +95,12 @@ void activeExpireCycle(int type) {
     if (dbs_per_call > server.dbnum || timelimit_exit)
         dbs_per_call = server.dbnum;
 
-    //扫描时间限制，取决于配置项hz
+    //用最大占用cpu转化为扫描时间限制，取决于配置项hz
     timelimit = config_cycle_slow_time_perc*1000000/server.hz/100;
     timelimit_exit = 0;
     if (timelimit <= 0) timelimit = 1;
 
+    // 如果是快速模式，超时时间设置1000毫秒
     if (type == ACTIVE_EXPIRE_CYCLE_FAST)
         timelimit = config_cycle_fast_duration; /* in microseconds. */
 
@@ -167,7 +177,7 @@ void activeExpireCycle(int type) {
                         de = de->next;
 
                         ttl = dictGetSignedIntegerVal(e)-now;
-                        //如果过期则清楚数据
+                        //如果过期则清除数据
                         if (activeExpireCycleTryExpire(db,e,now)) expired++;
                         if (ttl > 0) {
                             /* We want the average TTL of keys yet
@@ -225,6 +235,7 @@ void activeExpireCycle(int type) {
                                      (server.stat_expired_stale_perc*0.95);
 }
 ```
+
 ```c
 int activeExpireCycleTryExpire(redisDb *db, dictEntry *de, long long now) {
     //获取过期时间
@@ -242,8 +253,11 @@ int activeExpireCycleTryExpire(redisDb *db, dictEntry *de, long long now) {
 ```
 
 ## 删除方式
+
 对于过期数据的删除有两种方式：同步或异步。区别在于异步会使用后台线程异步释放内存，同步使用主线程释放内存，在清楚大对象时可能会有性能问题。
+
 ### 同步
+
 ```c
 int dbSyncDelete(redisDb *db, robj *key) {
     //删除过期记录表中的数据
@@ -263,8 +277,11 @@ int dbSyncDelete(redisDb *db, robj *key) {
     }
 }
 ```
+
 ### 异步
+
 在值对象清除成本比较大时，会采用后台线程执行，键还是同步清除。
+
 ```c
 #define LAZYFREE_THRESHOLD 64
 int dbAsyncDelete(redisDb *db, robj *key) {
