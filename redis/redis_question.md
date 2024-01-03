@@ -87,7 +87,7 @@ typedef struct dict {
 每次迁移完一个bucket，需要将旧表中的bucket指向NULL。
 最后判断一下是否全部迁移完成，如果是，则收回空间，重置rehash索引，否则告诉调用方，仍有数据未迁移。
 
-转载自https://zhuanlan.zhihu.com/p/46353221
+转载自<https://zhuanlan.zhihu.com/p/46353221>
 
 ## 跳表 VS 红黑树
 
@@ -185,24 +185,43 @@ typedef struct redisObject {
 * 放宽rewriteaof的触发条件，建议auto-aof-rewrite-percentage 100%
 
 ## localcache热点发现方案
+
 ### 中心热点发现
+
 蒋请求聚合到中心节点统计再下发热点。
+
 #### 特点
+
 * 更准确
 * 实现复杂、延时高
+
 #### 应用场景
+
 * 流量逐渐增多，勇缓冲时间做热点统计和下发，例如直播
+
 #### 业界实现
+
 * [有赞 TMC](https://mp.weixin.qq.com/s?__biz=MzAxOTY5MDMxNA==&mid=2455759090&idx=1&sn=f9f0b49d7c1916672f9d4f63dab0c2b6&chksm=8c686ed7bb1fe7c1446838941ff1bdb5d0bd8738aa43c22d456cf9736e3068eb13a29f908403&scene=21#wechat_redirect)
 * 字节 SmartCache
 * [京东](https://my.oschina.net/1Gk2fdm43/blog/4331985)
 
 ### 单机热点发现
+
 在单实例统计并缓存数据。
+
 #### 特点
+
 * 延时短、实时性高
 * 不准确，没法做全局统计
+
 #### 应用场景
+
 * 突发流量，发现热点后即使做缓存，例如秒杀场景
+
 #### 业界实现
+
 * 字节 bytecache
+
+## setex vs setnx
+
+都属于原子操作，是set key value和expire key seconds两个命令合并。差别在于setex如果key存在会覆盖，setnx则不做任何操作，返回对应状态。

@@ -374,5 +374,7 @@ var class_to_size = [_NumSizeClasses]uint16{0, 8, 16, 32, 48, 64, 80, 96, 112, 1
 
 ## panic和throw的区别
 
-* panic表示可以捕获处理的奔溃，使用recover修复，throw表示不可修复的错误(例如未加锁情况下解锁，map并发使用等)，不行可以修复，程序会直接退出
-* panic可以再程序中使用，throw存在底层源码，用户不可以使用
+* panic表示可以捕获处理的奔溃，使用recover修复，throw表示不可修复的错误(例如未加锁情况下解锁，map并发读写等)，修复没有意义，程序会直接退出
+* panic可以在程序中使用，throw存在底层源码，用户不可以使用
+
+## init执行顺序

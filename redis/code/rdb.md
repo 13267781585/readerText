@@ -1,8 +1,10 @@
 # 主从同步
+
 从库发送 sync/psync 命令后，主库会生成rbd文件后发送给从库，有两种方式，直接使用socket发送或者先在磁盘生成再发送，并记录增量命令，后续发送给从库。从节点状态流转图：
 <img src="./image/28.png" alt="28" />  
 
 ## sync和psync命令处理器
+
 ```c
 //server.c
 //sync/psync都是使用同一个处理器，psync会先尝试使用偏移量进行增量同步
@@ -16,6 +18,7 @@ struct redisCommand redisCommandTable[] = {
      0,NULL,0,0,0,0,0,0},
 }
 ```
+
 ```c
 void syncCommand(client *c) {
     //...
@@ -140,9 +143,12 @@ void syncCommand(client *c) {
 ```
 
 ## 增量同步
+
 会判断是否满足增量同步，如果不满足会使用全量同步，需要满足的条件有：
+
 * 主库和从库复制的数据来源同相同，都来源于当前主库或者来源于同一个被迁移的主库
 * 从库同步偏移量的数据还存在主库的命令备份缓存区
+
 ```c
 int masterTryPartialResynchronization(client *c, long long psync_offset) {
     long long psync_len;
@@ -245,10 +251,13 @@ need_full_resync:
 [[redis学习笔记]redis新特性--psync2](https://luoming1224.github.io/2018/11/20/[redis%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0]redis4.0%E6%96%B0%E7%89%B9%E6%80%A7-psync2/)
 
 ## 全量同步
+
 三种情况：
+
 * 如果有子进程在生成rdb文件，使用的是磁盘模式，尝试复用，否则等待下次
 * 如果有子进程在生成rdb文件，使用的是socket模式，等待下次
 * 如果没有子进程，当前从库使用的是磁盘能力，为了最大复用rdb文件，等到下一次再进行生成，如果是socket，则立即执行生成
+
 ```c
 int startBgsaveForReplication(int mincapa) {
     int retval;
@@ -301,8 +310,11 @@ int startBgsaveForReplication(int mincapa) {
 ```
 
 ## 无磁盘发送rdb
+
 父进程创建和子进程的读写管道，子进程生成rdb数据写入管道，父进程创建文件事件处理管道中的数据，实际上还是主库在发送rdb数据给从库，子进程只负责生成rdb数据。
+
 ### 子进程生成rdb
+
 ```c
 int rdbSaveToSlavesSockets(rdbSaveInfo *rsi) {
     listNode *ln;
@@ -394,6 +406,7 @@ int rdbSaveToSlavesSockets(rdbSaveInfo *rsi) {
     return C_OK; /* Unreached. */
 }
 ```
+
 ```c
 int rdbSaveRioWithEOFMark(rio *rdb, int *error, rdbSaveInfo *rsi) {
     char eofmark[RDB_EOF_MARK_SIZE];
@@ -418,8 +431,11 @@ werr: /* Write error. */
     return C_ERR;
 }
 ```
+
 ### 父进程监听发送rdb给从库
+
 父进程需要监听管道中的rdb数据，并发送给需要的从库，这个地方处理很有意思，首先会激活`rdbPipeReadHandler`事件，死循环读取管道的数据，并且遍历从库，往从库的连接写入，这里可能会出现数据太大，没办法一次性写入连接，会设置`rdbPipeWriteHandler`事件等待连接可写后继续写入，`rdbPipeReadHandler`会统计需要等待写入连接的数量，并暂时退出，等到所有的等待连接写入完毕后，`rdbPipeWriteHandler`会删除等待写入事件并重新添加`rdbPipeReadHandler`事件继续读取管道数据，循环跑上述流程直到管道数据全部发送。
+
 ```c
 //监听管道数据的文件事件
 void rdbPipeReadHandler(struct aeEventLoop *eventLoop, int fd, void *clientData, int mask) {
@@ -519,6 +535,7 @@ void rdbPipeReadHandler(struct aeEventLoop *eventLoop, int fd, void *clientData,
     }
 }
 ```
+
 ```c
 //rdb数据发送给从库连接，由于数据量太大无法一次性写入，这个事件激活后会继续写入
 void rdbPipeWriteHandler(struct connection *conn) {
@@ -563,7 +580,9 @@ void rdbPipeWriteHandlerConnRemoved(struct connection *conn) {
 ```
 
 ## 基于磁盘发送rdb
+
 ### 子进程生成rdb文件
+
 ```c
 int rdbSaveBackground(char *filename, rdbSaveInfo *rsi) {
     pid_t childpid;
@@ -602,6 +621,7 @@ int rdbSaveBackground(char *filename, rdbSaveInfo *rsi) {
     return C_OK; /* unreached */
 }
 ```
+
 ```c
 int rdbSave(char *filename, rdbSaveInfo *rsi) {
     char tmpfile[256];
@@ -674,6 +694,7 @@ werr:
     return C_ERR;
 }
 ```
+
 ```c
 int rdbSaveRio(rio *rdb, int *error, int rdbflags, rdbSaveInfo *rsi) {
     dictIterator *di = NULL;
@@ -785,7 +806,9 @@ werr:
 ```
 
 ### 父进程处理rdb文件
+
 rdb文件生成后，子进程退出，父进程的server.c/serverCron函数会周期性地调用checkChildrenDone函数检查子进程的状态，并将rdb文件发送给从库，每次最大16k。
+
 ```c
 void checkChildrenDone(void) {
     //...
@@ -841,6 +864,7 @@ void backgroundSaveDoneHandler(int exitcode, int bysignal) {
     updateSlavesWaitingBgsave((!bysignal && exitcode == 0) ? C_OK : C_ERR, type);
 }
 ```
+
 ```c
 void updateSlavesWaitingBgsave(int bgsaveerr, int type) {
     listNode *ln;
@@ -913,6 +937,7 @@ void updateSlavesWaitingBgsave(int bgsaveerr, int type) {
     }
 }
 ```
+
 ```c
 void sendBulkToSlave(connection *conn) {
     client *slave = connGetPrivateData(conn);
@@ -972,7 +997,9 @@ void sendBulkToSlave(connection *conn) {
 ```
 
 ## 发送增量命令
+
 主库在生成rdb文件过程中，会为从库缓存增量的命令，在从库加载完rdb文件后发送给从库，缓存的时机是在server.c/call函数的propagate函数中完成的，数据不是立即发送的，而是先写入从库客户端的缓存区。
+
 ```c
 void propagate(struct redisCommand *cmd, int dbid, robj **argv, int argc,
                int flags)
@@ -987,6 +1014,7 @@ void propagate(struct redisCommand *cmd, int dbid, robj **argv, int argc,
         replicationFeedSlaves(server.slaves,dbid,argv,argc);
 }
 ```
+
 ```c
 void replicationFeedSlaves(list *slaves, int dictid, robj **argv, int argc) {
     listNode *ln;
@@ -1080,24 +1108,33 @@ void replicationFeedSlaves(list *slaves, int dictid, robj **argv, int argc) {
 ```
 
 ## Q&A
+
 ### 主从同步亮点
+
 * 优先使用增量同步
 * 复用rdb文件，一份rdb文件服务多个从库，提高效率
 
 ### 磁盘 VS socket
+
 * 磁盘耗费空间，但是多个从库同步可以复用同一个rdb文件，在redis启动时主从同步效率较高
 * socket一次只能同步一个从库，但是不需要耗费很大的空间，在redis数据很大时效率较高
 
 ### cpu亲和性
-开启子进程后会设置cpu亲和性，可以提高切换处理器的成本。
+
+开启子进程后会设置cpu亲和性，可以降低切换处理器的成本。
 [Linux中CPU亲和性（affinity）](https://zhuanlan.zhihu.com/p/38541212)
 
-### 为什么父进程缓存的增量命令会和子进程生成的rdb文件有冲突吗？
+### 父进程缓存的增量命令会和子进程生成的rdb文件有冲突吗？
+
 不会，因为父子进程机制是Copy On Write，读是共享的，写时会复制一份数据进行变更，也就是说，父进程创建出子进程后，子进程看到的数据就是不会因为父进程的写入而变化的。
 
 ### 主库增量命令发送给从库的时机
 
+### 无磁盘和有磁盘复制怎么选择
 
-[Redis源码解析：16Resis主从复制之主节点的完全重同步流程](https://www.cnblogs.com/gqtcgq/p/7247054.html)   
-[Redis主从同步源码浅析-Master端](http://chenzhenianqing.com/articles/943.html)   
+* server.repl_diskless_sync
+* 从服务器是否支持处理EOF标记(无磁盘复制完成后会发送EOF作为结束标志)
+
+[Redis源码解析：16Resis主从复制之主节点的完全重同步流程](https://www.cnblogs.com/gqtcgq/p/7247054.html)
+[Redis主从同步源码浅析-Master端](http://chenzhenianqing.com/articles/943.html)
 [Redis 6.0 源码阅读笔记(10)-主从复制 Master 节点流程分析](https://blog.csdn.net/weixin_45505313/article/details/109388636)
