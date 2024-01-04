@@ -148,6 +148,7 @@ void syncCommand(client *c) {
 
 * 主库和从库复制的数据来源同相同，都来源于当前主库或者来源于同一个被迁移的主库
 * 从库同步偏移量的数据还存在主库的命令备份缓存区
+主库在运行过程中会保存命令，发送给从库执行，这里需要判断从库开始同步的数据是否还存在主库的命令缓存中(有可能被清除)。
 
 ```c
 int masterTryPartialResynchronization(client *c, long long psync_offset) {
@@ -254,11 +255,12 @@ need_full_resync:
 
 三种情况：
 
-* 如果有子进程在生成rdb文件，使用的是磁盘模式，尝试复用，否则等待下次
-* 如果有子进程在生成rdb文件，使用的是socket模式，等待下次
-* 如果没有子进程，当前从库使用的是磁盘能力，为了最大复用rdb文件，等到下一次再进行生成，如果是socket，则立即执行生成
+* 如果有子进程在生成rdb文件，使用的是磁盘模式，尝试复用，否则等待下次备份rdb文件
+* 如果有子进程在生成rdb文件，使用的是socket模式，等待下次备份rdb文件
+* 如果没有子进程，当前从库使用的是磁盘能力，为了最大复用rdb文件，等到下一次备份rdb文件再进行生成，如果是socket，则立即执行生成
 
 ```c
+// 开始生成rdb文件
 int startBgsaveForReplication(int mincapa) {
     int retval;
     //使用磁盘还是socket
@@ -274,9 +276,11 @@ int startBgsaveForReplication(int mincapa) {
     /* Only do rdbSave* when rsiptr is not NULL,
      * otherwise slave will miss repl-stream-db. */
     if (rsiptr) {
+        // 使用socket传输rdb文件
         if (socket_target)
             retval = rdbSaveToSlavesSockets(rsiptr);
         else
+            //使用磁盘
             retval = rdbSaveBackground(server.rdb_filename,rsiptr);
     } else {
         serverLog(LL_WARNING,"BGSAVE for replication: replication information not available, can't generate the RDB file right now. Try later.");
@@ -302,8 +306,6 @@ int startBgsaveForReplication(int mincapa) {
         }
     }
 
-    /* Flush the script cache, since we need that slave differences are
-     * accumulated without requiring slaves to match our cached scripts. */
     if (retval == C_OK) replicationScriptCacheFlush();
     return retval;
 }
@@ -311,11 +313,14 @@ int startBgsaveForReplication(int mincapa) {
 
 ## 无磁盘发送rdb
 
-父进程创建和子进程的读写管道，子进程生成rdb数据写入管道，父进程创建文件事件处理管道中的数据，实际上还是主库在发送rdb数据给从库，子进程只负责生成rdb数据。
+创建子进程生成rdb数据，通过管道传输给主库，主库发送给从库。
 
 ### 子进程生成rdb
 
+为了防止创建太多子进程对主进程造成的影响，redis每次至多会创建一个子进程，例如发现已经有子进程在生成rdb文件或者重写aof，则会等待完成后再继续进行。
+
 ```c
+// 子进程发送数据给父进程
 int rdbSaveToSlavesSockets(rdbSaveInfo *rsi) {
     listNode *ln;
     listIter li;
@@ -623,6 +628,7 @@ int rdbSaveBackground(char *filename, rdbSaveInfo *rsi) {
 ```
 
 ```c
+//子进程生成rdb文件
 int rdbSave(char *filename, rdbSaveInfo *rsi) {
     char tmpfile[256];
     char cwd[MAXPATHLEN]; /* Current working dir path for error messages. */
@@ -696,6 +702,7 @@ werr:
 ```
 
 ```c
+// 读redis数据生成写入文件
 int rdbSaveRio(rio *rdb, int *error, int rdbflags, rdbSaveInfo *rsi) {
     dictIterator *di = NULL;
     dictEntry *de;
@@ -807,9 +814,10 @@ werr:
 
 ### 父进程处理rdb文件
 
-rdb文件生成后，子进程退出，父进程的server.c/serverCron函数会周期性地调用checkChildrenDone函数检查子进程的状态，并将rdb文件发送给从库，每次最大16k。
+rdb文件生成后，子进程退出，父进程的server.c/serverCron函数会周期性地调用checkChildrenDone函数检查子进程的状态，并将rdb文件发送给从库，每次最大16k(可能会有多个从库复用同一个rdb文件)。
 
 ```c
+// 周期性检查子进程是否完成，多种任务：生成rdb、重写aof...
 void checkChildrenDone(void) {
     //...
  if (pid == -1) {
@@ -866,6 +874,7 @@ void backgroundSaveDoneHandler(int exitcode, int bysignal) {
 ```
 
 ```c
+// 发送rbd文件给从库，socket模式下直接更新从库状态即可
 void updateSlavesWaitingBgsave(int bgsaveerr, int type) {
     listNode *ln;
     listIter li;
@@ -1128,9 +1137,7 @@ void replicationFeedSlaves(list *slaves, int dictid, robj **argv, int argc) {
 
 不会，因为父子进程机制是Copy On Write，读是共享的，写时会复制一份数据进行变更，也就是说，父进程创建出子进程后，子进程看到的数据就是不会因为父进程的写入而变化的。
 
-### 主库增量命令发送给从库的时机
-
-### 无磁盘和有磁盘复制怎么选择
+### 无磁盘复制需要符合什么条件
 
 * server.repl_diskless_sync
 * 从服务器是否支持处理EOF标记(无磁盘复制完成后会发送EOF作为结束标志)

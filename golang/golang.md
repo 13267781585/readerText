@@ -356,12 +356,122 @@ var class_to_size = [_NumSizeClasses]uint16{0, 8, 16, 32, 48, 64, 80, 96, 112, 1
 检查程序是否有并发读写统一变量的调试方式。
 [golang中的race检测](https://www.cnblogs.com/yjf512/p/5144211.html)
 
-## noCopy
+## 不可复制结构体
 
-变量资源本身带状态且操作要配套的不能拷贝，携带有noCopy的结构体都不能复制。
-因为接口含有状态，用于使结构在使用时不可复制避免出错的机制。
+* 变量资源本身带状态且操作要配套的不能拷贝，携带有noCopy的结构体都不能复制。
+* 因为接口含有状态，用于使结构在使用时不可复制避免出错的机制。
+
+### noCopy(静态检测，不影响性能)
+
+``使用 go vet 命令才能检查出来，如果直接编译或者运行，不会报错``
+
+#### 原理
+
+* nocopy 是底层源码使用的，用户无法使用，如果需要达到不可复制效果，可以实现sync.Locker接口，并作为结构体私有变量
+
+#### 使用
+
+```go
+// 实现sync.Locker接口
+
+type noCopy struct{}
+
+func (*noCopy) Lock() {}
+
+func (*noCopy) Unlock() {}
+
+type SomethingCannotCopy struct {
+    noCopy 
+}
+```
+
 [Go 的 noCopy 是什么机制？](https://blog.csdn.net/EDDYCJY/article/details/125883888)
 [深入理解Golang nocopy原理](https://int64.ink/blog/golang_%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3golang_nocopy%E5%8E%9F%E7%90%86/)
+
+### copyChecker(运行时检测，有损性能)
+
+#### 原理
+
+* 变量复制后指针会变化，可以通过记录并对比指针判断是否发生了复制行为。
+
+```go
+//sync.Cond源码
+type copyChecker uintptr
+
+func (c *copyChecker) check() {
+    if uintptr(*c) != uintptr(unsafe.Pointer(c)) && 
+            !atomic.CompareAndSwapUintptr((*uintptr)(c), 0, uintptr(unsafe.Pointer(c))) &&
+            uintptr(*c) != uintptr(unsafe.Pointer(c)) {
+
+        panic("sync.Cond is copied")
+
+    }
+```
+
+首先是checker初始化之后第一次调用：
+
+* 当check第一次被调用，c的值肯定是0，而这时候c是有真实的地址的，所以step 1失败，进入step 2；
+* 用原子操作把c的值设置成自己的地址值，注意只有c的值是0的时候才能完成设置，因为这里c的值是0，所以交换成功，step 2是False，判断流程直接结束；
+* 因为不排除还有别的goroutine拿着这个checker在做检测，所以step 2是会失败的，这是要进入step 3；
+* step 3再次比较c的值和它自己的地址是否相同，相同说明多个goroutine共用了一个checker，没有发生复制，所以检测通过不会panic。
+    如果step 3的比较发现不相等，那么说明被复制了，直接panic
+
+再看其他情况下checker的流程：
+
+* 这时候c的值不是0，如果没发生复制，那么step 1的结果是False，判断流程结束，不会panic；
+* 如果c的值和自己的地址不一样，会进入step 2，因为这里c的值不为0，所以表达式结果一定是True，所以进入step 3；
+* step 3和step 1一样，结果是True，地址不同说明被复制，这时候if里面的语句会执行，因此panic。
+
+#### 使用
+
+```go
+type SomethingCannotCopy struct {
+    copyChecker // 这里只能作为值类型，不能作为引用类型，因为值类型在SomethingCannotCopy发生复制时会生成新的copyChecker对象
+}
+```
+
+### 自定义
+
+#### 原理
+
+* 定义接口，实现包内私有类型，对外提供生成对象接口
+* 通过反射和类型断言无法取出接口引用的数据；因为我们传给接口的是指针，因此源数据不会被复制
+
+#### 使用
+
+```go
+// 对外只提供接口来访问数据
+type Worker interface {
+ Work()
+}
+
+// 内部类型不导出，以接口的形式供外部使用
+type normalWorker struct {
+ // data members
+}
+
+func (*normalWorker) Work() {
+ fmt.Println("I am a normal worker.")
+}
+
+func NewNormalWorker() Worker {
+ return &normalWorker{}
+}
+
+type specialWorker struct {
+ // data members
+}
+
+func (*specialWorker) Work() {
+ fmt.Println("I am a special worker.")
+}
+
+func NewSpecialWorker() Worker {
+ return &specialWorker{}
+}
+```
+
+[golang拾遗：实现一个不可复制类型](https://www.cnblogs.com/apocelipes/p/17137206.html#%E9%9D%99%E6%80%81%E6%A3%80%E6%B5%8B%E5%AE%9E%E7%8E%B0%E7%A6%81%E6%AD%A2%E5%A4%8D%E5%88%B6)
 
 ## context
 
@@ -378,3 +488,18 @@ var class_to_size = [_NumSizeClasses]uint16{0, 8, 16, 32, 48, 64, 80, 96, 112, 1
 * panic可以在程序中使用，throw存在底层源码，用户不可以使用
 
 ## init执行顺序
+
+* 同个文件按init定义顺序执行
+同个包不同文件按文件名字典序执行
+main引入不同包，按引入顺序执行，再执行main的init函数
+如果包之间有依赖关系，先执行被依赖包init
+[一文读懂 Golang init 函数执行顺序](https://cloud.tencent.com/developer/article/2138066)
+
+## CSP并发编程模型
+
+两个并发实体通过消息(管道)通信的并发模型。go使用goroutine和channel实现部分csp理论，csp提倡通过通信共享内存，而不是通过共享内存通信。
+共享内存和csp区别
+通信方式：csp使用管道发送消息通信；共享内存使用共享内存进行通信，例如java、c++实现了线程安全的数据结构
+同步机制：csp发送消息后会阻塞，等到消息被接受后才能继续发送；共享内存随时可以写内存，需要配合同步机制
+复制性：csp编程简单；共享内存需要开发者管理锁状态防止资源竞争和死锁
+[Golang的CSP并发模型](https://lushunjian.gitee.io/2021/03/02/golang-de-csp-bing-fa-mo-xin)
