@@ -5,13 +5,14 @@
 ```redis
 ttl key  
 没设过期时间返回 -1   
-没有改key -2
+不存在该key -2
 ```
 
 ## 设置字符串
 
 ```redis
-setex key seconds value  
+setex key seconds value  -- key存在会覆盖
+setnx key seconds value -- key存在不会覆盖
 psetex key milliseconds value   
 ```
 
@@ -41,7 +42,7 @@ hgetall key 获取所有key和value 先显示key 再显示value一列一列显�
 ## 获取key
 
 ```redis
-key pattern 获取redis中所有key   
+keys pattern 获取redis中所有key   
 hkeys key 获取对应hash表所有key   
 hvals key 获取hash对应值  
 scan cursor [match] [count] 返回一定数量的 key，可能重复，有匹配原则时没有找到返回空链表，返回下一次遍历的索引   
@@ -147,6 +148,15 @@ docker exec -it <redis_name> redis-cli
 
 ```redis
 object encoding <key>
+
+debug object <key> 查询key的调试信息，会输出键的引用计数、编码方式、空闲时间等，仅作调试使用
+
+-- Value at：键的内存地址
+-- refcount：引用数量
+-- encoding：编码
+-- serializedlength：序列化后的长度
+-- lru：键最后一次访问时间
+-- lru_seconds_idle：键上次被访问以来的空闲时间
 ```
 
 ## 查询key的上次访问时间
@@ -178,14 +188,11 @@ CONFIG SET latency-monitor-threshold <milliseconds> 设置监控延迟阈值
 latency doctor 延迟分析结果和应对方法建议
 ```
 
-
-
 ## 服务端命令监控
 
 ```redis
 monitor 显示服务端接收到的命令
 ```
-
 
 ## 查询bigkeys和hotkeys
 
@@ -193,14 +200,6 @@ monitor 显示服务端接收到的命令
 redis -cli --bigkeys
 redis -cli --hotkeys
 ```
-
-
-查询key的序列化信息
-
-```
-debug object <key>
-```
-
 
 ## 检查修复持久化文件
 
@@ -216,7 +215,6 @@ client list 查询客户端连接的信(连接的具体信息)
 info clients 查询客户端的汇总信息
 
 ```
-
 
 # Redis参数
 
