@@ -2,7 +2,7 @@
 
 ## nil
 
-* nil 不是关键字，可以定义变量名问nil的变量
+* nil 不是关键字，可以定义变量名为nil的变量
 
 ```go
  nil := 1
@@ -180,7 +180,7 @@ func main() {
 // float64...
 ```
 
-## Slice是否公用底层数组
+## Slice是否共用底层数组
 
 * 当从一个切片或数组截取出来的切片共享同一个底层数组，对一个切片修改，其他的可见
 
@@ -236,7 +236,9 @@ func main() {
 
 ## 切片和数组的区别
 
-数组是长度固定的，切片底层是基于数组实现的，是对数组的扩展，可以实现自动扩容，[2]int和[3]int是不同的类型
+* 数组是长度固定的，切片底层是基于数组实现的，是对数组的扩展，可以实现自动扩容，[2]int和[3]int是不同的类型
+* 数组是值类型，赋值都会复制，切片是引用类型，赋值不会复制数据
+* 数组在编译时确定大小和内存，切片在运行时动态扩容
 
 ## 切换扩容长度的计算
 
@@ -476,11 +478,17 @@ func NewSpecialWorker() Worker {
 ## context
 
 [Golang Context 源码剖析](http://www.17bigdata.com/study/programming/godeep/goddeep-context-src.html)
+[Golang Context 源码分析](https://mritd.com/2021/06/27/golang-context-source-code/)
 
 ## make和new区别
 
 * make专门用于创建slice、map、chan类型数据并初始化；new用于创建任意类型
-* make返回的是类型的引用(Type)，new返回的是类型引用的指针(*Type)
+* make返回的是类型的引用(Type)，new返回的是指向类型零值的指针(*Type)
+
+```go
+make([]int,10)->长度为10的切片
+new([]int)->[]int的指针*[]int，值为nil
+```
 
 ## panic和throw的区别
 
