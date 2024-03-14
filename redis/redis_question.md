@@ -248,3 +248,10 @@ typedef struct redisObject {
 
 * 容量->业务所需字节数+20-30%冗余
 * 性能->4core16G实例，4个组成的集群qps达到70-80w
+
+## memcached vs redis
+
+* 数据类型：memcached提供简单key-value存储，类型只有字符串，redis提供多种数据类型
+* redis的功能丰富，提供了集群模式(主从、分片)、事务、发布订阅等
+* 数据持久化：memcached没有数据持久化功能，redis提供了rdb+aof
+* 性能：memcached在多核的机器上速度高于redis(单线程)
