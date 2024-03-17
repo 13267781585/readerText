@@ -1240,6 +1240,42 @@ math.NaN() 的结果，它的含义是 not a number，类型是 float64。通常
     }
 ```
 
+### map无法获取value的地址
+
+3、map的value是无法寻址的,也就是说无法获取map value的地:址。
+
+* 常见的case为:当value是struct类型,其值无法修改(最简单的解解决方法就是value存成*T类型即可);对map[key]取地址时报错。
+
+```go
+package main
+type T struct {
+Id int64
+ }
+func main(){
+
+var a = map[int64]T{}
+
+a[10].Id = 20
+
+var m map[int]int{1:1}
+b := &m[1]
+ }
+
+./main.go:9:11: cannot assign to struct field a[10].Id in map
+/main.go:11:11: cannot take the address of
+```
+
+* 设计成不可寻址是因为map内部的存储位置未必是固定的。当插入时,若数据空间不够,就需要进行扩
+容,扩容要重新哈希,此时key被rehash到另外的桶里。另外外,迁移的过程不是一次性,是分批完成,
+取key或者value的地址操作过程中,可能发生扩容被迁移。所以不能保证"取地址+update"是原子操
+作,这就有可能导致这个地址由于某种原因重新Hash为新地址了,而在返回原来的地址上修改就破坏
+了内存安全模型。
+
+### sync.Map VS system.Map+锁
+
+* hashmap+锁、sync.Map都是不可扩展的，不能随着增加资源(cpu)提升性能，无法充分利用多核的优势
+<img src="./image/23.jpg" alt="23" />
+
 [Go 语言系列5：浮点型](http://www.360doc.com/content/22/0427/15/78746357_1028559896.shtml)
 [Go之父说：不懂浮点数不配当码农…](https://mp.weixin.qq.com/s?__biz=MzAxMTA4Njc0OQ==&mid=2651436532&idx=1&sn=6ada5a2c7e7fcbc37c05ba75e1ffc890&scene=19#wechat_redirect)
 本文是以下文章的读书笔记：

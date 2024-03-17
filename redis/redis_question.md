@@ -255,3 +255,10 @@ typedef struct redisObject {
 * redis的功能丰富，提供了集群模式(主从、分片)、事务、发布订阅等
 * 数据持久化：memcached没有数据持久化功能，redis提供了rdb+aof
 * 性能：memcached在多核的机器上速度高于redis(单线程)
+
+## 研发如何优化redis内存
+
+* 选择合适数据类型
+* 根据业务场景key是否可以设置为不过期
+key非常多的场景可以使用不过期+MQ策略，使用MQ延时删除数据
+* 根据redis数据类型的底层实现精简存入的数据，选择最优的底层数据结构
