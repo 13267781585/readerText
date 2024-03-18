@@ -18,6 +18,7 @@
 
 * defer 的规则
   * 延迟函数的参数在defer语句出现时就已经确定下来
+
     ```go
     func a() {
         i := 0
@@ -52,7 +53,7 @@
     ```
 
   * 延迟函数执行按后进先出顺序执行
-  * 延迟函数可能操作主函数的具名返回值   
+  * 延迟函数可能操作主函数的具名返回值
     return不是一个原子操作，先将返回值存放到栈中，再执行延迟函数，最后跳转返回，所以延迟函数可能会影响返回值
     * 主函数拥有匿名返回值，返回字面值
 
@@ -75,10 +76,10 @@
             var i int
         
             defer func() {
-                //copy了一个副本，操作不会影响原来的数据
+                //会把i+1
                 i++
             }()
-        
+            //因为返回的是值类型，会复制，在返回时还没有+1，所以时0
             return i
         }
         ```
@@ -189,7 +190,7 @@ func deferreturn() {
 
     2. defer结构体采用链表连接，效率低
 
-* 1.13   
+* 1.13
 将defer结构体分配到栈，减少堆的分配(不适用在for中的defer函数)，性能提升30%
 
 ```go
@@ -223,29 +224,35 @@ ret:
 
 ```
 
-* 1.14(延迟函数在栈中如何存放和定位的？)   
+* 1.14(延迟函数在栈中如何存放和定位的？)
 优化了分配堆的缺点，使用 open coded 的方式，将延迟函数以普通函数调用的方式在主函数返回之前调用，省去了创建 _defer 结构体和链表的开销，在正常情况下延迟函数会被调用，当发生panic时，程序会终止panic后续逻辑执行，这是因为 panic程序 会通过扫描栈的方式保证延迟函数正确执行(如何扫描)，因此优化后defer的性能提升但是panic的处理过程变慢了。在下列条件中会禁止使用 open coded 的方法:
   * defer数量 <= 8个
 
   * return数量 * defer数量 <= 15
 
   * defer外部无循环(可以用匿名函数优化)
+
     ```go
-   	for {
-		//...
-		defer func() {}()
-	}
+    for {
+  //...
+  defer func() {}()
+ }
 
     for{
         func(){
             //...
-		    defer func() {}()
+      defer func() {}()
         }()
     }
+
     ```
+
   * gcflags使用-N来禁止编译器优化
 
 ```go
+/*
+    defer的开放编码优化方法会把defer函数转化为静态函数调用，并使用变量的bit记录函数调用的情况，调用成功会清除对应bit的标识，在panic后会扫描变量的bit，如果没有执行会补偿。这种方式不需要创建_defer结构体，减少了对堆的依赖，加快了defer的性能，但是panic后需要额外的扫描成本，降低了panic处理的性能。
+*/
 func A(i int) {
     defer A1(i, 2*i)
     if(i > 1){
@@ -278,6 +285,7 @@ func A(i int){
         
     //判断A2是否要调用
     if df&2 > 0 {
+        //执行后清除标记位
         df = df&^2
         A2(m, n)
     }
@@ -291,7 +299,7 @@ func A(i int){
 }
 
 //实际处理方式  
-//在 deferreturn中调用，通过_defer中fd和varp字段定位延迟函数并执行
+//在 deferreturn中调用，通过_defer中fd和varp字段定位延迟函数并执行，panic后调用，扫描哪些defer函数没有被执行
 func runOpenDeferFrame(gp *g, d *_defer) bool {
  done := true
  fd := d.fd
@@ -384,6 +392,6 @@ func (s *state) stmt(n ir.Node) {
 ```
 
 [go语言系列7 - Go defer优化之open_coded](https://www.modb.pro/db/57017)  
-[golang defer原理](https://blog.csdn.net/qq_49723651/article/details/121509818)   
+[golang defer原理](https://blog.csdn.net/qq_49723651/article/details/121509818)
 [Go defer实现原理剖析](https://blog.csdn.net/Tybyqi/article/details/83827140)  
 [1.14版本defer性能大幅度提升，内部实现了开放编码优化](https://www.q578.com/s-5-2421209-0/)

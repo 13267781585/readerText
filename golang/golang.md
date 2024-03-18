@@ -523,3 +523,67 @@ main引入不同包，按引入顺序执行，再执行main的init函数
 * interface{}类型的参数，编辑期间无法判断具体类型
 * 大小超过设定的局部变量
 * 闭包对象
+
+## 闭包
+
+闭包是一种特殊的匿名函数，可以捕获外部域变量，即使变量在外部域生命周期已经结束。由于使用闭包会导致代码不够清晰，使用不当还会导致得到错误的结果。所以一般不建议使用闭包。
+
+### 闭包的作用和意义
+
+* 捕获状态： 闭包可以捕获它被创建时候的环境，这意味着它可以记住和操作当时作用域中的变量。这种特性常被用来生成和维护状态。
+* 数据隔离： 闭包允许封装变量，提供数据隐藏。即使闭包返回到它的外部作用域，这些私有变量依旧是被保护的，不会被外部作用域直接访问，只能通过闭包暴露的方法进行操作，通常用于优化全局变量。
+* 回调函数： 闭包经常用作回调函数，特别是在异步操作中。它可以继承创建时候的上下文环境，并在将来某个时刻被调用。
+* 实现接口： 通过闭包，可以在不定义新类型的情况下实现接口方法。
+
+```go
+func count() func() int {
+ var i int
+ return func() int {
+  i++
+  return i
+ }
+}
+
+func Test111(t *testing.T) {
+ c := count()
+ fmt.Println(c())
+ fmt.Println(c())
+ c1 := count()
+ fmt.Println(c1())
+ fmt.Println(c1())
+}
+
+// Runner 接口定义了Run方法，任何实现了该方法的类型都满足此接口
+type Runner interface {
+    Run()
+}
+
+// FuncRunner 是一个函数类型，它也实现了Run方法
+type FuncRunner func()
+
+// Run 调用包含的闭包函数
+func (f FuncRunner) Run() {
+    f()
+}
+
+// NewTask 返回一个Runner接口，该接口背后是一个匿名函数闭包
+func NewTask() Runner {
+    var id int // id变量会被闭包捕获
+
+    return FuncRunner(func() {
+        id++
+        fmt.Printf("Task id %d has been completed\n", id)
+    })
+}
+
+func main() {
+    task1 := NewTask() // 创建一个任务，它的闭包捕获了id变量
+    task1.Run() // 输出: Task id 1 has been completed
+    task1.Run() // 输出: Task id 2 has been completed
+
+    task2 := NewTask() // 创建另一个任务，它持有一个新的独立id变量
+    task2.Run() // 输出: Task id 1 has been completed
+}
+```
+
+[探究Golang中的闭包](https://llmxby.com/2022/08/27/%E6%8E%A2%E7%A9%B6Golang%E4%B8%AD%E7%9A%84%E9%97%AD%E5%8C%85/)
