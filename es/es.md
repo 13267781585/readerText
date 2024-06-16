@@ -1,5 +1,9 @@
 # ES
 
+## 查询顺序
+没有固定顺序，es会根据每个子句涉及的文档数、数据重复率等来优先处理成本小的。
+[In which order are my Elasticsearch queries/filters executed?](https://www.elastic.co/cn/blog/elasticsearch-query-execution-order)
+
 ## 查询上下文和过滤上下文
 ### 查询上下文
 检查文档是否符合条件+计算相关性得分，通常用于全文搜索，主要关心的是文档的匹配程度。query是查询上下文。
@@ -49,6 +53,7 @@ PUT /my_index
   }
 }
 ```
+[Index Sorting in Lucene](https://www.elastic.co/cn/blog/index-sorting-elasticsearch-6-0)
 
 3. 不支持一个index中多个type
 type被类比为数据库模型中的表，但是同index中不同type底层不是独立存储，es会把不同type的字段合并存储，就会造成以下影响：
@@ -57,7 +62,7 @@ type被类比为数据库模型中的表，但是同index中不同type底层不�
 * 不同type相同名称类型必须相同
 
 4. 基于负载均衡
-从轮训匀请求路由，改为基于机器负载路由，会考虑机器cpu、内存、磁盘等情况。
+从轮询匀请求路由，改为基于机器负载路由，会考虑机器cpu、内存、磁盘等情况。
 
 ### 7.0
 1. 去除type
@@ -196,19 +201,48 @@ routing 默认为文档的 _id
 ### 理想方案
 提供像binlog一样机制，复制数据发送mq，并监听变更，写入新索引，当新老索引数据差达到设置阈值，通过别名切换。如果有部分更新，切换前可以做短暂停写，mq数据消费完成后再切。
 
+
+## 底层数据结构
+### Block K-D Tree
+* BKD树是用来搜索多维数据的一种树，在es中用于优化数字类型单维数据的范围查询。对于单维度的数据，实际上就是简单的对所有值做一个排序，然后反复从中间做切分，生成一个类似于B-tree这样的结构。和传统的B-tree不同的是，他的叶子结点存储的不是单值，而是一组值的集合，也就是是所谓的一个Block。每个Block内部包含的值数量控制在512- 1024个，保证值的数量在block之间尽量均匀分布。
+* Lucene将这颗B-tree的非叶子结点部分放在内存里，而叶子结点紧紧相邻存放在磁盘上。当作range查询的时候，内存里的B-tree可以帮助快速定位到满足查询条件的叶子结点块在磁盘上的位置，之后对叶子结点块的读取几乎都是顺序的。
+
+### 倒排索引
+* 保存包含关键字的doc id list，关键字->posting list，适合做全文索引、匹配查询。
+* posting list使用Delta Encoding(增量编码)算法压缩，
+
+### Doc Values
+列式存储，es中会把字段的值按docid的顺序存储。
+* 用于快速检索单个字段值操作，例如聚合、排序等。
+* 因为是按docid顺序存储，可以快速查询某个docid的字段值，用于查询时合并docid list时使用。
+
+### Term Dictionary
+为了能快速找到某个term，将所有的term按照字典序排序，还用"跳表"结构按一定的间隔来记录词项，用来加速词项信息的查找。在页里面实现二分查找。
+
+### Term Index(字典树)
+term太多，term dictionary也会很大，使用前缀字典数索引term dictionary，再使用FST压缩Term Index，可以将Term Index缓存到内存中。查询时先通过
+Term Index找到对应Term Dictionary的Block，再去磁盘到找对应term，减少磁盘的随机读写。
+
+### BitMap
+用于合并docid时使用，docid个数低于4096时使用数组，高于4096使用BitMap。
+
+
+
+![2](./image/2.png)
+
 ## Q&A
 ### text和keyword的区别
 * text全文索引，在写入时会被分析、转化，存储时不是原来文本，使用用于模糊匹配
 * keyword不会被拆解，适合用于过滤、排序、聚合操作
 
-### nested和object的区别
+### nested/object/join
 1. objec  
 es中任意字段可以看作object类型，object被用于处理object对象/数组，会把对象扁平化，例如 {"user":{"first":"huang","name":"1"}} 打平为 user.first:"huang" 和 user.name:"1"，如果是数字，打平为数组，user.first:["huang","chen"] 和 user.name:["1","2"]。
 * 对象之间的字段会被打平成为索引的字段，查询和正常字段一样
 * 问题是会散失对象字段之间相关性
 
 2. nested
-lucene引擎没有nested的类型，只能处理扁平化文档。nested类型是es的封装实现，嵌套的结构当作独立的文档存储，保留结构字段的相关性。
+lucene引擎没有nested的类型，只能处理扁平化文档。nested类型是es的封装实现，父子文档是共同存储在一个段中，保留结构字段的相关性。
 * 查询需要嵌套在nested中
 ```es
 {
@@ -223,8 +257,16 @@ lucene引擎没有nested的类型，只能处理扁平化文档。nested类型�
 }
 ```
 * 可用于存放动态kv
-* 写入性能低
-主子文档被单独存储，在修改的时候需要把主子文档都查询出来做覆盖更新
-* 查询性能低
-  * 需要把子文档和夫文档关联起来
-  * 当查询包含nested时，es需要针对每一个嵌套结构做单独查询
+  
+3. join
+建立不同文档之间父子关系，父子文档是独立存储，父子文档需要在同一分片。
+* 父子文档独立写入，互不影响
+
+4. 对比
+* join父子文档独立存储，写入性能高，nested有写放大问题，需要整个父子文档覆盖更新
+* nested父子文档共同存储，读取性能高
+* 写入频繁用join，查询频繁用nested
+[Elasticsearch Nested 选型，先看这一篇！](https://jishu.proginn.com/doc/4698647671c9aea6c)
+
+### realtime
+get、mget请求的参数，标志是否搜索实时数据，true会搜索事务日志中还没有刷盘的数据，返回最新版本，会有性能开销；false不会搜索日志，返回的不是实时数据。
