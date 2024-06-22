@@ -11,7 +11,7 @@
 
 * nil 是pointer、func、map、slice、interface、channel的零值
 
-  * slice
+  * slice   
     为nil的slice，除了不能索引外，其他的操作都是可以的，当你需要填充值的时候可以使用append函数，slice会自动进行扩充。根据官方的文档，slice有三个元素，分别是长度、容量、指向数组的指针。
 
     ```go
@@ -23,7 +23,7 @@
     s[i]  // panic: index out of range
     ```
 
-  * map
+  * map   
   对于nil的map，我们可以把它看成是一个只读的map，不能进行写操作，否则就会panic。对于只被用于读操作的map，在传参的是时候可以传递nil值。
 
     ```go
@@ -34,33 +34,23 @@
     a(nil)  -- 空map
     ```
 
-  * channel
+  * channel   
     关闭一个nil的channel会导致程序panic。
-  * interface
+  * interface   
     interface并不是一个指针，底层实现由两部分组成，一个是类型，一个值，(Type, Value)。声名接口指针类型没有赋值时，类型和值都为nil，这时候接口==nil，显示赋值带有类型值为nil时，接口类型不为nil，值为nil，这时候接口!=nil。
 
     ```go
-    func do() error {   // error(*doError, nil)
-        var err *doError  
-        return err  
+    func Test1(t *testing.T) {
+        var inter TestInterface // ==nil
+
+        inter = &Test11{} // !=nil
+
+        var test11 *Test11
+        inter = test11 // !=nil
     }
 
-    //正确处理方式
-    func do1() error{
-        var err *doError
-        ...
-        if err != nil{
-            return err
-        }
-        return nil
-    }
-
-    func main() {
-        err := do()  // 类型不为空 值为空
-        // true
-        if err != nil{
-            ...
-        } 
+    type TestInterface interface {
+        A()
     }
     ```
 
@@ -79,7 +69,7 @@ go提供了int8、int16、int32、int64等固定长度的数据类型，int和ui
 
 * 定义结构体
 * 定义接口
-* 定义类型
+* 定义类型   
 定义类型是一个新的类型，和原来的类型没有关系，新增加的方法不属于原来的类型
 
 ```go
@@ -355,8 +345,56 @@ var class_to_size = [_NumSizeClasses]uint16{0, 8, 16, 32, 48, 64, 80, 96, 112, 1
 
 ## race
 
-检查程序是否有并发读写统一变量的调试方式。
+检查程序是否有并发读写同一变量且没有做同步机制的调试方式。  
 [golang中的race检测](https://www.cnblogs.com/yjf512/p/5144211.html)
+```go
+func main() {
+	a, lock := 1, sync.Mutex{}
+	go func() {
+		lock.Lock()
+		defer lock.Unlock()
+		a = 2
+	}()
+	lock.Lock()
+	defer lock.Unlock()
+	a = 3
+	fmt.Println("a is ", a)
+
+	time.Sleep(2 * time.Second)
+}
+
+
+//a is  3
+
+func main() {
+	a, lock := 1, sync.Mutex{}
+	go func() {
+		a = 2
+	}()
+	a = 3
+	fmt.Println("a is ", a)
+
+	time.Sleep(2 * time.Second)
+}
+
+// a is  3
+// ==================
+// WARNING: DATA RACE
+// Write at 0x00c0000ba018 by goroutine 7:
+//   main.main.func1()
+//       /Users/bytedance/work/workspace/TestProject/redis/main.go:11 +0x30
+
+// Previous write at 0x00c0000ba018 by main goroutine:
+//   main.main()
+//       /Users/bytedance/work/workspace/TestProject/redis/main.go:13 +0xac
+
+// Goroutine 7 (running) created at:
+//   main.main()
+//       /Users/bytedance/work/workspace/TestProject/redis/main.go:10 +0xa4
+// ==================
+// Found 1 data race(s)
+// exit status 66
+```
 
 ## 不可复制结构体
 
@@ -387,7 +425,7 @@ type SomethingCannotCopy struct {
 }
 ```
 
-[Go 的 noCopy 是什么机制？](https://blog.csdn.net/EDDYCJY/article/details/125883888)
+[Go 的 noCopy 是什么机制？](https://blog.csdn.net/EDDYCJY/article/details/125883888)   
 [深入理解Golang nocopy原理](https://int64.ink/blog/golang_%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3golang_nocopy%E5%8E%9F%E7%90%86/)
 
 ### copyChecker(运行时检测，有损性能)
@@ -499,26 +537,26 @@ new([]int)->[]int的指针*[]int，值为nil
 ## init执行顺序
 
 * 同个文件按init定义顺序执行
-同个包不同文件按文件名字典序执行
-main引入不同包，按引入顺序执行，再执行main的init函数
-如果包之间有依赖关系，先执行被依赖包init
+* 同个包不同文件按文件名字典序执行
+* main引入不同包，按引入顺序执行，再执行main的init函数
+* 如果包之间有依赖关系，先执行被依赖包init
 [一文读懂 Golang init 函数执行顺序](https://cloud.tencent.com/developer/article/2138066)
 
 ## CSP并发编程模型
 
 两个并发实体通过消息(管道)通信的并发模型。go使用goroutine和channel实现部分csp理论，csp提倡通过通信共享内存，而不是通过共享内存通信。
-共享内存和csp区别
-通信方式：csp使用管道发送消息通信；共享内存使用共享内存进行通信，例如java、c++实现了线程安全的数据结构
-同步机制：csp发送消息后会阻塞，等到消息被接受后才能继续发送；共享内存随时可以写内存，需要配合同步机制
-复制性：csp编程简单；共享内存需要开发者管理锁状态防止资源竞争和死锁
+#### 共享内存和csp区别
+* 通信方式：csp使用管道发送消息通信；共享内存使用共享内存进行通信，例如java、c++实现了线程安全的数据结构
+* 同步机制：csp发送消息后会阻塞，等到消息被接受后才能继续发送；共享内存随时可以写内存，需要配合同步机制
+* 复制性：csp编程简单；共享内存需要开发者管理锁状态防止资源竞争和死锁   
 [Golang的CSP并发模型](https://lushunjian.gitee.io/2021/03/02/golang-de-csp-bing-fa-mo-xin)
 
 ## 逃逸分析
 
-编译阶段决定变量分配到堆还是栈上。
+编译阶段决定变量分配到堆还是栈上，提高内存使用效率和减少gc压力。
 
 ### 发生逃逸情况
-
+变量被外引用或者饮用关系不明确。
 * 函数把指针变量作为返回值
 * interface{}类型的参数，编辑期间无法判断具体类型
 * 大小超过设定的局部变量
@@ -587,3 +625,29 @@ func main() {
 ```
 
 [探究Golang中的闭包](https://llmxby.com/2022/08/27/%E6%8E%A2%E7%A9%B6Golang%E4%B8%AD%E7%9A%84%E9%97%AD%E5%8C%85/)
+
+
+## string
+基础类型，不可变，线程安全，用于处理UTF-8文本。
+### 底层实现
+```golang
+type stringStruct struct {
+    str unsafe.Pointer // 指向数据数组的指针
+    len int            // 数据的长度（字节）
+}
+```
+
+### 字符串的内存管理
+Go 的字符串通常是高效的，因为：
+* 内存共享：当从一个字符串派生出一个子字符串时，新的字符串会复用原始字符串的内存。例如，s2 := s1[1:4] 不会导致复制，s2 会指向 s1 的内部数据的一个子区间。
+* 字符串字面量的内存是静态分配的：在编译时，所有的字符串字面量都会被存储在可执行文件的只读部分，并在程序运行时共享。
+
+### 不可变性
+#### 优点
+* 线程安全
+* 内存优化
+例如，编译器可以在编译时对相同的字符串字面量进行去重处理，使得所有相同的字符串字面量引用同一块内存区域。
+* 高效
+
+#### 缺点
+* 大量修改操作会导致临时变量创建销毁，这可能会对性能和内存使用产生负面影响。在这种情况下，可以使用如 strings.Builder 或 []byte 等可变数据结构来优化性能

@@ -34,8 +34,8 @@
 
 * 拆分
 避免内聚性不高的数据在同一个结构里
-  * 副本，分散到不同redis实例上，访问带随机数
-  * localcache+signleflight，设置几秒的缓存，singleflight防止缓存穿透，更新有数据一致性问题
+* 副本，分散到不同redis实例上，访问带随机数
+* localcache+signleflight，设置几秒的缓存，singleflight防止缓存穿透，更新有数据一致性问题
 
 ### 出现热点止损
 #### 热key白名单
