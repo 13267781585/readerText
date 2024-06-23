@@ -1,5 +1,16 @@
 # ES
 
+## doc_id和_id
+### doc_id
+底层引擎标识文档唯一性。
+* 内部使用：lucene底层生成的文档唯一标识符，倒排索引存储的是doc_id，内部使用。
+* 非永久性：索引重建、段合并等操作会改变，不适合做文档标识存储。
+
+### _id
+es标识文档唯一性，在lucene底层作为普通字段存储，默认不会设置doc values。
+* 自定义：用户指定或者es自动生成，es默认使用该字段做路由，对外透出。
+* 永久使用：写入后不会改变，可以作为文档标识存储。
+
 ## 查询顺序
 没有固定顺序，es会根据每个子句涉及的文档数、数据重复率等来优先处理成本小的。
 [In which order are my Elasticsearch queries/filters executed?](https://www.elastic.co/cn/blog/elasticsearch-query-execution-order)
@@ -215,6 +226,7 @@ routing 默认为文档的 _id
 列式存储，es中会把字段的值按docid的顺序存储。
 * 用于快速检索单个字段值操作，例如聚合、排序等。
 * 因为是按docid顺序存储，可以快速查询某个docid的字段值，用于查询时合并docid list时使用。
+* text类型没有doc values
 
 ### Term Dictionary
 为了能快速找到某个term，将所有的term按照字典序排序，还用"跳表"结构按一定的间隔来记录词项，用来加速词项信息的查找。在页里面实现二分查找。
@@ -223,11 +235,8 @@ routing 默认为文档的 _id
 term太多，term dictionary也会很大，使用前缀字典数索引term dictionary，再使用FST压缩Term Index，可以将Term Index缓存到内存中。查询时先通过
 Term Index找到对应Term Dictionary的Block，再去磁盘到找对应term，减少磁盘的随机读写。
 
-### BitMap
-用于合并docid时使用，docid个数低于4096时使用数组，高于4096使用BitMap。
-
-
-
+### bitset
+用于合并docid时使用，docid个数低于4096时使用数组，高于4096使用bitset。
 ![2](./image/2.png)
 
 ## Q&A
@@ -236,7 +245,7 @@ Term Index找到对应Term Dictionary的Block，再去磁盘到找对应term，�
 * keyword不会被拆解，适合用于过滤、排序、聚合操作
 
 ### nested/object/join
-1. objec  
+1. object  
 es中任意字段可以看作object类型，object被用于处理object对象/数组，会把对象扁平化，例如 {"user":{"first":"huang","name":"1"}} 打平为 user.first:"huang" 和 user.name:"1"，如果是数字，打平为数组，user.first:["huang","chen"] 和 user.name:["1","2"]。
 * 对象之间的字段会被打平成为索引的字段，查询和正常字段一样
 * 问题是会散失对象字段之间相关性
