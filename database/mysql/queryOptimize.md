@@ -29,12 +29,12 @@ CREATE TABLE single_table (
 #### select_type select查询对应的类型
 
 * SIMPLE：简单查询，不包含 UNION 或者子查询。
-* PRIMARY：查询中如果包含子查询、union、union all，最左边的 SELECT 将被标记为 PRIMARY。
+* PRIMARY：查询中如果包含子查询、union、union all，最左边的 SELECT 将被标记为 PRIMARY。   
     <img src="./image/53.jpg" alt="53" />
 * UNION：在 UNION 或者 UNION ALL 语句中，除了最左边出现的SELECT。
 * UNION RESULT：择使用临时表来完成 UNION 查询的去重工作，针对该临时表的查询的 select_type 就是 UNION RESULT。
 * DEPENDENT UNION：在包含 UNION 或者 UNION ALL 的大查询中，如果各个小查询都依赖于外层查询的话，那除了最左边的那个小查询之外，其余的小查询的 select_type 的值就是 DEPENDENT UNION 。
-  * 和外层有关联
+  * 和外层有关联   
         <img src="./image/56.jpg" alt="56" />
         <img src="./image/57.jpg" alt="57" />
   * 和外层无关联
