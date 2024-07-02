@@ -117,9 +117,10 @@ AND usernum = user_account_num
 GROUP BY usernum , user_name , user_default_group_name
 ```
 
-解决:1.先将 groupby 在驱动表完成，降低数据量再进行连接
+解决:
+1. 先将 groupby 在驱动表完成，降低数据量再进行连接
 
-2.去掉groupby user_name user_default_group , usernum 的取值是唯一的，usernum 后的字段
+2. 去掉groupby user_name user_default_group , usernum 的取值是唯一的，usernum 后的字段
 
 生产测试 从 5.x - > 3.x
 
@@ -155,7 +156,8 @@ ORDER BY r.sendtime DESC , r.flag DESC , r.id DESC
 LIMIT 0 , 30
 ```
 
-解决：1.robot_msg_detail 查出的数据在 500 - 10000，只要求拿出30条，先在 robot_msg_detail 过滤条件再进行连接
+解决：
+1. robot_msg_detail 查出的数据在 500 - 10000，只要求拿出30条，先在 robot_msg_detail 过滤条件再进行连接
 
 测试数据 1000行，从 500 → 15
 
@@ -176,11 +178,9 @@ order by
   flag
 ```
 
-解决：1.把sql的order by删除
-
-在应用里做sort
-
-减少了 filesort
+解决：
+1. 把sql的order by删除
+  在应用里做sort->减少了 filesort
 
 2. 问题：chatinfo_detail 是大表，表连接很耗时
    user的作用取 user_name 做判断
@@ -197,9 +197,8 @@ order by cd.cd_id asc
 ```
 
 解决：
-
 1. 将连接操作拆分为两个sql执行
 2. 根据chatid 在chatinfo_detail查出数据
-根据步骤1查出的数据,去重找出sendername
-拿2的sendername在user表查出user_name
-在应用里做sendername的加工  
+* 根据步骤1查出的数据,去重找出sendername
+* 拿2的sendername在user表查出user_name
+* 在应用里做sendername的加工  
