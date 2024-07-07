@@ -53,17 +53,18 @@ order by cid desc limit 1
 ## 业务方面调整查询条件(减少查询范围，去除非必要字段)
 
 1. 场景描述: 某业务需要加载用户列表，用户列表又涉及到字段的更新，需要定时刷新
-   现有解决方案：项目本地使用spring schedule定时任务每隔一段时间去数据库请求数据缓存到本地，因为数据量可能过多，所以分批次加载，每次加载都是全量加载。
+   现有解决方案：项目本地使用本地定时任务每隔一段时间去数据库请求数据缓存到本地，因为数据量可能过多，所以分批次加载，每次加载都是全量加载。
    问题:
    1. 因为项目是多实例部署的，导致所有的实例都在跑定时任务，即使没有用到数据的实例
    2. 每次加载都是全量，没有更新的数据也重新加载了一次
    3. 加载的数据缓存在本地，需要维护多个数据
 
-    <img src="./image/3.jpg" alt="3" />
+    <img src="./image/3.jpg" alt="3" /> 
+
     解决方案：
-    1. 从spring schedule迁移到job task(saturn console)
-    2. 初始化全量加载一次，并记录这批数据的最大更新时间，记为lastMaxUpdateTime job定时按 数据表中的更新字段 > lastMaxUpdateTime加载增量更新的数据列表
-    3. 缓存从本地缓存改为 redis 缓存
+    1. 本地缓存迁移redis。
+    2. 初始化全量加载一次，并记录这批数据的最大更新时间，记为lastMaxUpdateTime 定时任务从db扫描更新时间大于lastMaxUpdateTime的增量数据做修改。
+    3. 只需要一个定时任务跑任务。
     <img src="./image/2.jpg" alt="2" />
 
 2. 查询范围大
@@ -74,7 +75,8 @@ select cid,finishtime,vendoraccount from chat_history where status=2 and cih_fin
 
 解决：cih_finishtime 时间范围减少 （两小时->半小时）
 
-## 当多表连接时，在不影响索引的使用下，可以用将where过滤条件、limit、group by 等操作先查询过滤一遍驱动表，得到小的数据集再进行连接，虽然会多一次查询，但是当驱动表的数据非常大时，会有显著的性能提升
+## 小表驱动大表
+当多表连接时，在不影响索引的使用下，可以用将where过滤条件、limit、group by 等操作先查询过滤一遍驱动表，得到小的数据集再进行连接，虽然会多一次查询，但是当驱动表的数据非常大时，会有显著的性能提升
 
 1. 问题：group by 和 order by 无法利用索引，效率低
 
@@ -92,7 +94,8 @@ group by chatinfohead.service_id
 order by chatnum
 ```
 
-解决：1.实际上关联 user 只是为了取 几个字段，因为 user_account_num 字段是唯一性的，左表一条数据最多对应右表一条数据，连表不会影响group by 和 order by 的操作，所以可以将 groupby 和orderby 的操作先在 驱动表 执行完滤过成一个小的数据集合，再去关联取 user 表的字段
+解决：
+* 实际上关联 user 只是为了取 几个字段，因为 user_account_num 字段是唯一性的，左表一条数据最多对应右表一条数据，连表不会影响group by 和 order by 的操作，所以可以将 groupby 和orderby 的操作先在 驱动表 执行完滤过成一个小的数据集合，再去关联取 user 表的字段
 
 减少了关联的数据量，时间减半
 
@@ -118,9 +121,9 @@ GROUP BY usernum , user_name , user_default_group_name
 ```
 
 解决:
-1. 先将 groupby 在驱动表完成，降低数据量再进行连接
+* 先将 groupby 在驱动表完成，降低数据量再进行连接
 
-2. 去掉groupby user_name user_default_group , usernum 的取值是唯一的，usernum 后的字段
+* 去掉groupby user_name user_default_group , usernum 的取值是唯一的，usernum 后的字段
 
 生产测试 从 5.x - > 3.x
 
@@ -157,7 +160,7 @@ LIMIT 0 , 30
 ```
 
 解决：
-1. robot_msg_detail 查出的数据在 500 - 10000，只要求拿出30条，先在 robot_msg_detail 过滤条件再进行连接
+* robot_msg_detail 查出的数据在 500 - 10000，只要求拿出30条，先在 robot_msg_detail 过滤条件再进行连接
 
 测试数据 1000行，从 500 → 15
 
@@ -179,7 +182,7 @@ order by
 ```
 
 解决：
-1. 把sql的order by删除
+* 把sql的order by删除
   在应用里做sort->减少了 filesort
 
 2. 问题：chatinfo_detail 是大表，表连接很耗时
@@ -191,14 +194,14 @@ select
 cd_id, chatid,
 case when u.user_name is not null then u.user_name else sendername end as sendername,flag,type,status
 from
-chatinfo_detail cd left join user u
+chatinfo_detail cd left  1 join user u
 on cd.sendername = u.user_account_num where chatid = 4535435
 order by cd.cd_id asc
 ```
 
 解决：
-1. 将连接操作拆分为两个sql执行
-2. 根据chatid 在chatinfo_detail查出数据
+* 将连接操作拆分为两个sql执行
+* 根据chatid 在chatinfo_detail查出数据
 * 根据步骤1查出的数据,去重找出sendername
 * 拿2的sendername在user表查出user_name
 * 在应用里做sendername的加工  

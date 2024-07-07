@@ -52,7 +52,25 @@
 
 ## 延时消息实现方式
 延时队列
+
 1. 消息队列
+* nsp
+Golang实现的消息中间件，缺点是消息不落盘，且没有稳定的维护，不适合企业使用。
+GitHub - nsqio/nsq: A realtime distributed messaging platform
+
+* dmq
+
+滴滴自研，在mq加一层代理，独立部署延迟服务，代理层判断是否延迟消息，发送到延迟服务，使用rocksdb持久化并按照到期时间排序，消息到期后在投到rocketmq消费。
+
+* bmq
+
+字节自研，和滴滴原理一致，存储的介质改为了自研的abase(类似redis)。
+
+* qmq
+
+去哪儿自研，使用两次时间轮方式，磁盘上保存小时单位的年轮，内存保存500ms单位的年轮，年轮转动读取对应事件执行，定期从磁盘读取消息到内存中。
+qmq/docs/cn/design.md at master · qunarcorp/qmq
+
 * rocketmq延时消息
     * 缺点
         * 设置了18个等级延迟间隔，没办法自由设置

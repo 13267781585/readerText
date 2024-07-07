@@ -32,7 +32,7 @@ CREATE TABLE single_table (
 * PRIMARY：查询中如果包含子查询、union、union all，最左边的 SELECT 将被标记为 PRIMARY。   
     <img src="./image/53.jpg" alt="53" />
 * UNION：在 UNION 或者 UNION ALL 语句中，除了最左边出现的SELECT。
-* UNION RESULT：择使用临时表来完成 UNION 查询的去重工作，针对该临时表的查询的 select_type 就是 UNION RESULT。
+* UNION RESULT：使用临时表来完成 UNION 查询的去重工作，针对该临时表的查询的 select_type 就是 UNION RESULT。
 * DEPENDENT UNION：在包含 UNION 或者 UNION ALL 的大查询中，如果各个小查询都依赖于外层查询的话，那除了最左边的那个小查询之外，其余的小查询的 select_type 的值就是 DEPENDENT UNION 。
   * 和外层有关联   
         <img src="./image/56.jpg" alt="56" />
@@ -160,9 +160,8 @@ select * from table_name order by if(a==1,1,0),a;
 
 ## show profile参数
 
-*Sending data
-
-The thread is reading and processing rows for a SELECT statement, and sending data to the client. Because operations occurring during this this state tend to perform large amounts of disk access (reads), it is often the longest-running state over the lifetime of a given query.
+* Sending data
+    The thread is reading and processing rows for a SELECT statement, and sending data to the client. Because operations occurring during this this state tend to perform large amounts of disk access (reads), it is often the longest-running state over the lifetime of a given query.
 
 ## 慢查询排除处理思路
 
@@ -221,25 +220,24 @@ or->o(n)
 in->先排序,二分法查找->log(n)
 5. 多表连接时，可以先根据where过滤驱动表，在进行连接，减少连接过程的比较次数
 6. straight_join 强制sql按照表关联顺序执行
-7. 优化 filesort
 
-* 使用索引
-* 在应用程序进行排序分组
-* 调整参数 max_length_for_sort_data 采用合适的排序算法提升效率
-mysql有两种排序算法
+7. 优化 filesort   
+    * 使用索引
+    * 在应用程序进行排序分组
+    * 调整参数 max_length_for_sort_data 采用合适的排序算法提升效率
+    * mysql有两种排序算法
 i. 两次传输排序
 先读取行指针和需要排序的列，排序完后再读取行，因为经过排序，第二次读取会产生大量随机io，优点是占空间少，可以排序大量数据
 ii. 单次传输排序
-如果排序的列都来自驱动表，可以先对驱动表进行排序再关联，这时候只会出现 using filesort，否则在关联完成后，会用一张临时表存放数据，再进行排序，会出现 using temporary 和 using filesort
-先读取查询所有列，再进行排序，只需要一次顺序io读取，但是排序过程很多无关的列，会占用非常大的空间，当排序数据非常大对空间消耗大
+如果排序的列都来自驱动表，可以先对驱动表进行排序再关联，这时候只会出现 using filesort，否则在关联完成后，会用一张临时表存放数据，再进行排序，会出现 using temporary 和 using filesort，先读取查询所有列，再进行排序，只需要一次顺序io读取，但是排序过程很多无关的列，会占用非常大的空间，当排序数据非常大对空间消耗大
 当查询列不超过 max_length_for_sort_data 时，使用 单次传输排序
 
 12. group by 结果会自动按照分组字段进行排序，可以通过 order by null 取消这种排序，可以消除 using filesort
 13. sql中的复杂聚合操作可以放到应用程序处理，减少sql的执行时间
 14. union 和 union all
 
-* union 需要去重(同个表中相同数据也会去重，应该是把两个数据库当做一个集合去处理，而不是那一个集合中的数据去判断另一个表是否有重复的)，union all 不需要考虑去重
-* union + limit 先在子查询 limit 再 联合起来 limit
+    * union 需要去重(同个表中相同数据也会去重，应该是把两个数据库当做一个集合去处理，而不是那一个集合中的数据去判断另一个表是否有重复的)，union all 不需要考虑去重
+    * union + limit 先在子查询 limit 再 联合起来 limit
 
 15. limit offset num
 当 offset 很大时，性能越来越差，因为mysql需要把数据从中拿取num条后取出num条，但是前offset是没有用的

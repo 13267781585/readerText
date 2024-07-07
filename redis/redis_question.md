@@ -51,6 +51,8 @@
 
 * key大小
 
+* cpu尖刺
+
 ## keys 和 scan 的优缺点
 
 ### keys
@@ -165,7 +167,12 @@ typedef struct dict {
 * 不使用内存对齐机制
 * 根据字符串的长度细分不同类型，减少长度变量类型长度
 
+### 数据放在首部位置
+1. dict新插入数据
+2. ziplist新加入数据
+
 ### ziplist编码
+多个数据合并为一个节点
 
 ### hash渐进式扩容
 
@@ -245,7 +252,7 @@ typedef struct redisObject {
 ## Fork耗时优化(子进程需要复制父进程内存页表)
 
 * 使用物理机或者高效支持fork操作的虚拟技术
-* 控制redis单实例的内存大小，fork耗时喝内存量成正比，建议在10g以内
+* 控制redis单实例的内存大小，fork耗时和内存量成正比，建议在10g以内
 * 放宽rewriteaof的触发条件，建议auto-aof-rewrite-percentage 100%
 
 ## localcache热点发现方案

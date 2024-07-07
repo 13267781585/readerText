@@ -1,9 +1,6 @@
 # 跳表
 
 ## 结构
-
-<img alt="8" src="./image/8.png"/>
-
 ```c
 typedef struct zskiplistNode {
     //数据 char *->sds
