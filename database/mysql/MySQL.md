@@ -530,5 +530,5 @@ gtid_executed->执行过的gtid，通过取主从服务器集合差集，判断�
 ## datetime vs timestamp
 
 * datetime需要5-8字节，timestamp需要4字节
-* timestamp范围 1970-2023，datetime没有限制
+* timestamp范围 1970-2027，datetime没有限制
 * timestamp使用utc时区格式存储，使用时根据不同时区转换，datetime不跟随时区变化

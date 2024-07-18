@@ -54,7 +54,7 @@
 延时队列
 
 1. 消息队列
-* nsp
+* nsq
 Golang实现的消息中间件，缺点是消息不落盘，且没有稳定的维护，不适合企业使用。
 GitHub - nsqio/nsq: A realtime distributed messaging platform
 
