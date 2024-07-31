@@ -58,6 +58,10 @@
 Golang实现的消息中间件，缺点是消息不落盘，且没有稳定的维护，不适合企业使用。
 GitHub - nsqio/nsq: A realtime distributed messaging platform
 
+Nsq使用场景
+* 消息可靠性要求不高
+* 作为其他mq的辅助，搭配使用，例如在kafaka堆积延迟时使用nsq快速处理
+
 * dmq
 
 滴滴自研，在mq加一层代理，独立部署延迟服务，代理层判断是否延迟消息，发送到延迟服务，使用rocksdb持久化并按照到期时间排序，消息到期后在投到rocketmq消费。
@@ -73,7 +77,7 @@ qmq/docs/cn/design.md at master · qunarcorp/qmq
 
 * rocketmq延时消息
     * 缺点
-        * 设置了18个等级延迟间隔，没办法自由设置
+        * 设置了18个等级延迟间隔，没办法自由设置，社区版最长延迟2h
 * rabbitmq自带死信队列
     * 缺点
         * 消息按照先进先出消费，即使后进的消息已经过期

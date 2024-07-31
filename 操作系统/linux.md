@@ -112,3 +112,16 @@ top
    sudo tcpdump udp
    ```
    类似地，使用 `udp` 过滤器可以捕获所有 UDP 数据包。
+
+### 查看进程端口号
+1. ss (socket statistics)是netstat的替代工具，查询出所有正在连接和建立的tcp和udp连接。以下是使用ss命令查看程序占用端口号的示例：
+```bash
+netstat/ss -tuln | grep <进程名或pid>
+```
+### 查看端口被占用进程
+1. lsof（list open files）是一个列出当前系统打开文件的工具。
+```bash
+lsof -i tcp:<端口>
+lsof -i udp:<端口>
+lsof -i :<端口>
+```

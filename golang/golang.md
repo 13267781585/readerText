@@ -1,5 +1,50 @@
 # golang
 
+## 内存泄漏
+### goroutine
+* 没有优雅退出，一直被阻塞，例如通道读不到数据，向nil的通道读写数据
+* 申请了全局变量，但没有释放
+
+### 通道
+* 通道使用完后没有正常关闭
+* time.Ticker/Timer使用完后需要调用Stop()方法回收，否则会周期性向通道写数据，无法被gc回收。time.After()每次会返回新的Timer，应该谨慎使用。
+```go
+for{
+    select{
+        case <-time.After(time.Second):
+            fmt.Println("1")
+    }
+}
+
+// 每次都会返回新Timer
+func After(d Duration) <-chan Time {
+	return NewTimer(d).C
+}
+
+//正确使用方式
+timer:=time.After(time.Second)
+defer func(){timer.Stop()}
+for{
+    select{
+        case <-timer:
+            fmt.Println("1")
+    }
+}
+```
+
+### 其他
+* 切片/字符串截断
+切片和字符串会共享底层数组数据，如果大的数据被截断，没被使用的位置也无法被回收
+```golang
+arr:=make([]int,1024,1024)
+arr1:=arr[0:1]
+```
+
+* 数组值传递
+在传递给函数时会被复制，在高并发/大数组会产生内存激增。
+
+* 资源关闭
+
 ## 值选择器 vs 指针选择器
 在Go语言中选择使用值接收器（`func (a A)`）还是指针接收器（`func (a *A)`）通常取决于以下几个因素：
 

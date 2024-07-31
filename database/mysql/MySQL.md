@@ -1,5 +1,95 @@
 # MySQL
 
+## Cpu飙升排查
+本质上是任务过多导致
+### 方向
+* 慢查询
+* 锁等待
+* 业务流量增大，需要增加机器资源
+* 
+
+### 步骤
+#### 问题定位
+1. 查看全局状态
+mysql记录了统计数据用于排查问题。
+```sql
+SHOW GLOBAL STATUS LIKE '_';
+-- Threads_running 线程数。如果 Threads_running 较高，而 Threads_connected 较低，可能表明存在某些长时间运行的查询，或者可能是由于连接池配置不当导致连接被频繁创建和销毁。
+-- Threads_connected 连接数
+-- Key_reads：表示从磁盘读取索引块的次数。高的 Key_reads 可能暗示着索引未能完全放入内存中，需要调整 key_buffer_size 参数
+-- Key_writes：表示向磁盘写入索引块的次数。频繁的 Key_writes 可能表明索引的写入操作较为频繁，需要考虑索引的优化。
+-- Created_tmp_disk_tables 表示在磁盘上创建的临时表的数量。过多的磁盘临时表可能表明某些查询需要优化，或者 tmp_table_size 参数设置过小。
+
+SHOW ENGINE INNODB STATUS;
+-- Innodb_row_lock_current_waits：表示当前正在等待的行锁数量。
+-- Innodb_deadlocks：显示发生的死锁次数。
+-- 
+
+```
+
+2. 查看运行任务
+使用show processlist查看正在执行的任务，输出字段如下：
+* Id：线程的唯一标识符，是一个数字。
+
+* User：执行线程的 MySQL 用户名。
+
+* Host：用户连接的主机名和端口号，格式通常为 hostname:port。
+
+* db：当前线程所使用的数据库。如果一个线程没有使用任何数据库，这一列将显示为 NULL。
+
+* Command：线程正在执行的命令类型，如 Sleep、Query、Connect 等。
+
+* Time：当前命令已经执行的秒数。对于 Sleep 状态的线程，这表示线程已经空闲了多久。
+
+* State：线程的状态，提供了关于线程当前活动的额外信息。
+MySQL的`State`列在`SHOW PROCESSLIST;`命令的输出中提供了当前进程的状态信息。以下是一些常见的`State`值及其含义：
+
+    - **Sleeping**: 线程当前没有执行任何操作，处于空闲状态，等待新的客户端命令。
+    - **Query**: 线程正在执行一个查询命令。
+    - **Locked**: 线程正在等待行锁或表锁的释放，可能是因为其他进程正在访问该资源。
+    - **Copying to tmp table**: 线程正在将数据复制到临时表中，这通常发生在使用`GROUP BY`或`ORDER BY`子句时。
+    - **Sorting result**: 线程正在对查询结果进行排序，可能是为了满足`ORDER BY`子句的要求。
+    - **Sending data**: 线程正在向客户端发送查询结果。
+    - **Creating tmp table**: 线程正在创建一个临时表，这可能发生在某些查询操作中。
+    - **Removing duplicates**: 线程正在删除查询结果中的重复行，通常与`DISTINCT`操作相关。
+    - **Copying to group table**: 线程正在将数据复制到聚合表中，这通常发生在`GROUP BY`操作中。
+    - **Fetching rows**: 线程正在从服务器获取数据行，这可能是查询的一部分。
+    - **Altering table**: 线程正在修改表结构。
+    - **Rebuilding index**: 线程正在重建索引。
+    - **Committing**: 线程正在提交一个事务，将更改永久保存到数据库。
+    - **Rolling back**: 线程正在回滚一个事务，撤销所有更改。
+
+* Info：正在执行的 SQL 语句（可能会因为安全或长度原因被截断）。对于 NULL 值，表示该线程没有正在执行的查询，或者查询已经被重置。
+
+* Rows_sent：该线程发送的行数。
+
+* Rows_examined：该线程检查的行数。
+
+* Rows_affected：受该线程当前SQL语句影响的行数（不包括 SELECT 语句）。
+
+结合State和Time大致判断出问题：
+* 大量Query+Time时间长->慢查询
+* Locked+Time时间长->锁冲突
+* Copying to tmp table/Sorting result/Creating tmp table/Removing duplicates->去重/排序等耗时操作
+* 都是正常的，那可能是参数配置不合理
+
+
+####  问题解决
+### 慢查询
+
+
+### 锁等待
+* 查看当前锁信息
+高版本锁表：performance_schema.data_locks/performance_schema.data_lock_wait
+低版本:information_schema.innodb_locks/information_schema.innodb_lock_wait
+<img src=".\image\68.jpg" alt="68" />
+
+* 死锁
+因为mysql可以检查并中断死锁，所以表并不能捕捉到，需要通过查看日志定位。
+1. show engine innodb status->记录了最近一次死锁信息
+2. 错误日志
+3. 开启innodb_print_all_deadlocks参数，打印详细死锁信息
+
 ## 事务表
 在 MySQL 中，`innodb_trx` 表是 `information_schema` 数据库的一部分，它提供了当前正在进行的所有 InnoDB 事务的详细信息。这个表对于数据库管理员在监控和诊断事务相关问题时非常有用。下面是 `innodb_trx` 表中各个字段的详细解析：
 
@@ -431,10 +521,6 @@ SET @@SESSION.information_schema_stats_expiry=0;
 ## SQL语句执行顺序
 
 <img src=".\image\66.jpg" alt="66" />
-
-## 锁错误排查方式
-
-<img src=".\image\68.jpg" alt="68" />
 
 ## 基本概念
 
