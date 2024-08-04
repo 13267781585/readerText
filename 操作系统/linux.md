@@ -99,6 +99,8 @@ top
 * 内存
 ### gdb
 
+[Go程序内存泄露问题快速定位](https://www.hitzhangjie.pro/blog/2021-04-14-go%E7%A8%8B%E5%BA%8F%E5%86%85%E5%AD%98%E6%B3%84%E9%9C%B2%E9%97%AE%E9%A2%98%E5%BF%AB%E9%80%9F%E5%AE%9A%E4%BD%8D)
+
 ## 网络抓包
 ### tcpdump(非linux自带)
 1. **抓取所有 TCP 数据包**:

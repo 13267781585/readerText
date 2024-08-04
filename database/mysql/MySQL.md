@@ -1,5 +1,83 @@
 # MySQL
 
+## Unicode、UTF-8、UTF-16 和 UTF-32 
+Unicode定义了字符规则，UTF-8、UTF-16 和 UTF-32是Unicode标准的实现。
+1. **Unicode**:
+   - Unicode 是一个国际标准（ISO/IEC 10646），旨在为世界上几乎所有的字符和文本符号提供一个唯一的数字标识（即码点）。
+   - Unicode 本身不是一种编码形式，而是一个字符集，定义了字符的编码范围。
+
+2. **UTF-8**:
+   - UTF-8（Unicode Transformation Format, 8-bit）是一种将 Unicode 字符编码转换为 8 位字节序列的格式。
+   - UTF-8 是变长编码，使用 1 到 4 个字节表示一个 Unicode 字符，具体长度取决于字符的码点范围。
+   - UTF-8 是向后兼容 ASCII 的，因为它的首字节与 ASCII 相同。
+
+3. **UTF-16**:
+   - UTF-16（Unicode Transformation Format, 16-bit）是一种将 Unicode 字符编码转换为 16 位字节序列的格式。
+   - UTF-16 使用 2 个字节表示基本多文种平面（BMP）中的字符，使用 4 个字节（一对代理项）表示辅助平面上的字符。
+
+4. **UTF-32**:
+   - UTF-32（Unicode Transformation Format, 32-bit）是一种将 Unicode 字符编码转换为 32 位字节序列的格式。
+   - UTF-32 使用固定长度的 4 个字节表示所有 Unicode 字符，包括辅助平面上的字符。
+
+5. **选择编码方式**:
+   - 选择哪种编码方式取决于应用场景和需求。UTF-8 是最常用的编码方式，因为它具有很好的兼容性和效率。
+   - UTF-16 在处理包含大量非 BMP 字符的文本时可能更有效率，例如某些亚洲语言。
+   - UTF-32 由于固定长度的特性，在某些编程环境中可能更方便处理，尽管它通常不是最优选择，因为它会占用更多的存储空间。
+
+6. **性能和存储**:
+   - UTF-8 在存储欧洲语言时通常更加高效，因为它使用更少的字节。
+   - UTF-16 在存储亚洲语言时可能更高效，因为大多数字符可以直接用 2 个字节表示。
+   - UTF-32 由于固定长度，处理起来可能更简单，但会占用更多的存储空间。
+
+## 字符编码
+### 字符集
+```sql
+show charset;
+show charset like '%utf%';
+```
+### 场景编码
+1. utf8/uft8mb3
+最长3字节，可以支持大部分语言基本字符，不包含emoji表情。
+
+2. uft8mb4
+最长4个字节，几乎包含所有字符。
+
+3. ascii
+128个字符
+
+4. gbk/gb2312
+gbk是对gb2312的扩展
+
+5. 
+
+### 排序规则
+```sql
+show collation;
+show collation like '%utf%';
+```
+示例：
+utf8_general_ci，字符集_语言_是否区分语言重音、大小写
+* ci-case insensitive 不区分大小写
+* cs-case sensitive 区分大小写
+* ai-accent insensitive 不区分重音
+* as-accent sensitive 区分重音
+* _bin 按二进制方式比较字符串，区分大小写和重音符号。
+[一文搞懂字符集！ （详解utf8 、utf8mb3 和 utf8mb4 的区别，utf8mb4_unicode_ci 和 utf8mb4_general_ci的区别）](https://blog.csdn.net/Lo_CoCo_vE/article/details/132084412)   
+[很多人不懂的MySQL编码问题！](https://zhuanlan.zhihu.com/p/424868844)
+
+### 级别
+1. 服务器级别
+2. 数据库级别
+3. 表级别
+4. 列级别
+
+### 数据编码解码过程
+![93](./image/93.png)
+
+如果是增删改操作，流程为：客户端--->character_set_client--->character_set_connection---->DB
+
+如果是查操作，客户端--->character_set_client--->character_set_connection---->DB---->character_set_result
+[五分钟看懂 MySQL 编解码原理](https://www.51cto.com/article/689254.html)
 ## Cpu飙升排查
 本质上是任务过多导致
 ### 方向
@@ -89,6 +167,26 @@ MySQL的`State`列在`SHOW PROCESSLIST;`命令的输出中提供了当前进程�
 1. show engine innodb status->记录了最近一次死锁信息
 2. 错误日志
 3. 开启innodb_print_all_deadlocks参数，打印详细死锁信息
+
+## Wait-for group
+MySQL 中的 InnoDB 存储引擎使用一种称为 "wait-for graph"（等待图）的算法来检测死锁。以下是该算法的工作原理：
+
+1. **等待图**：InnoDB 存储引擎维护一个等待图，图中的节点代表事务，边代表事务之间的锁等待关系。如果事务 A 正在等待事务 B 释放锁，那么就在 A 和 B 之间画一条边。
+
+2. **循环检测**：如果在等待图中存在一个循环，即从一个事务出发，沿着边走一圈后能回到原事务，这表示发生了死锁。例如，事务 A 等待 B，事务 B 等待 C，事务 C 又等待 A。
+
+3. **回滚**：一旦检测到死锁，InnoDB 将选择其中一个或多个事务进行回滚，以打破死锁循环。被回滚的事务会收到一个死锁错误，并且其他事务可以继续执行。
+
+4. **死锁权重**：在选择回滚哪个事务时，InnoDB 会考虑多个因素，如事务的等待时间、事务的大小、回滚的影响等。InnoDB 试图选择一个“成本”最小的事务进行回滚。
+
+5. **锁超时**：InnoDB 还为锁请求设置了超时时间。如果一个事务在超时时间内没有获得所需的锁，它将自动回滚，释放所有锁，并可以重新尝试执行。
+
+6. **锁升级**：InnoDB 通常首先授予行级锁，但如果需要，它可以升级到表级锁。死锁检测算法也适用于锁升级的情况。
+
+7. **死锁日志**：InnoDB 记录死锁发生的情况，包括涉及的事务和锁的信息。这些信息可以用于调试和优化数据库性能。
+
+8. **死锁检测频率**：InnoDB 不是在每次事务请求锁时都检查死锁，而是在某些情况下（如锁请求等待时）才进行死锁检测。
+
 
 ## 事务表
 在 MySQL 中，`innodb_trx` 表是 `information_schema` 数据库的一部分，它提供了当前正在进行的所有 InnoDB 事务的详细信息。这个表对于数据库管理员在监控和诊断事务相关问题时非常有用。下面是 `innodb_trx` 表中各个字段的详细解析：
