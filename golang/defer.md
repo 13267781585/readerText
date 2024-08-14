@@ -234,122 +234,122 @@ ret:
 
     ```go
     for {
-  //...
-  defer func() {}()
- }
-
-    for{
-        func(){
-            //...
-      defer func() {}()
-        }()
+    //...
+    defer func() {}()
     }
+
+        for{
+            func(){
+                //...
+        defer func() {}()
+            }()
+        }
 
     ```
 
   * gcflags使用-N来禁止编译器优化
 
-```go
-/*
-    defer的开放编码优化方法会把defer函数转化为静态函数调用，并使用变量的bit记录函数调用的情况，调用成功会清除对应bit的标识，在panic后会扫描变量的bit，如果没有执行会补偿。这种方式不需要创建_defer结构体，减少了对堆的依赖，加快了defer的性能，但是panic后需要额外的扫描成本，降低了panic处理的性能。
-*/
-func A(i int) {
-    defer A1(i, 2*i)
-    if(i > 1){
-        defer A2("Hello", "eggo")
+    ```go
+    /*
+        defer的开放编码优化方法会把defer函数转化为静态函数调用，并使用变量的bit记录函数调用的情况，调用成功会清除对应bit的标识，在panic后会扫描变量的bit，如果没有执行会补偿。这种方式不需要创建_defer结构体，减少了对堆的依赖，加快了defer的性能，但是panic后需要额外的扫描成本，降低了panic处理的性能。
+    */
+    func A(i int) {
+        defer A1(i, 2*i)
+        if(i > 1){
+            defer A2("Hello", "eggo")
+        }
+        // code to do something
+        return
     }
-    // code to do something
-    return
-}
-func A1(a,b int){
-    //......
-}
-func A2(m,n string){
-    //......
-}
-
-//只是机制的模拟
-func A(i int){
-    //Go1.14通过增加一个标识变量df来解决这类问题。用df中的每一位对应标识当前函数中的一个defer函数是否要执行。
-    var df byte
-    //A1的参数
-    var a, b int = i, 2*i
-    df |= 1
-
-    //A2的参数
-    var m,n string = "Hello", "eggo"
-    if i > 1 {
-        df |= 2
+    func A1(a,b int){
+        //......
     }
-    //code to do something
-        
-    //判断A2是否要调用
-    if df&2 > 0 {
-        //执行后清除标记位
-        df = df&^2
-        A2(m, n)
+    func A2(m,n string){
+        //......
     }
-    //判断A1是否要调用
-    if df&1 > 0 {
-        df = df&^1
-        A1(a, b)
+
+    //只是机制的模拟
+    func A(i int){
+        //Go1.14通过增加一个标识变量df来解决这类问题。用df中的每一位对应标识当前函数中的一个defer函数是否要执行。
+        var df byte
+        //A1的参数
+        var a, b int = i, 2*i
+        df |= 1
+
+        //A2的参数
+        var m,n string = "Hello", "eggo"
+        if i > 1 {
+            df |= 2
+        }
+        //code to do something
+            
+        //判断A2是否要调用
+        if df&2 > 0 {
+            //执行后清除标记位
+            df = df&^2
+            A2(m, n)
+        }
+        //判断A1是否要调用
+        if df&1 > 0 {
+            df = df&^1
+            A1(a, b)
+        }
+        return
+        //省略部分与recover相关的逻辑
     }
-    return
-    //省略部分与recover相关的逻辑
-}
 
-//实际处理方式  
-//在 deferreturn中调用，通过_defer中fd和varp字段定位延迟函数并执行，panic后调用，扫描哪些defer函数没有被执行
-func runOpenDeferFrame(gp *g, d *_defer) bool {
- done := true
- fd := d.fd
+    //实际处理方式  
+    //在 deferreturn中调用，通过_defer中fd和varp字段定位延迟函数并执行，panic后调用，扫描哪些defer函数没有被执行
+    func runOpenDeferFrame(gp *g, d *_defer) bool {
+    done := true
+    fd := d.fd
 
- deferBitsOffset, fd := readvarintUnsafe(fd)
- nDefers, fd := readvarintUnsafe(fd)
- deferBits := *(*uint8)(unsafe.Pointer(d.varp - uintptr(deferBitsOffset)))  //延迟函数比特位，记录函数是否需要被执行
+    deferBitsOffset, fd := readvarintUnsafe(fd)
+    nDefers, fd := readvarintUnsafe(fd)
+    deferBits := *(*uint8)(unsafe.Pointer(d.varp - uintptr(deferBitsOffset)))  //延迟函数比特位，记录函数是否需要被执行
 
- for i := int(nDefers) - 1; i >= 0; i-- {
-  // // 读取函数funcdata地址和参数信息
-  var closureOffset uint32
-  closureOffset, fd = readvarintUnsafe(fd)
-  //不需要执行
-  if deferBits&(1<<i) == 0 {
-   continue
-  }
-  closure := *(*func())(unsafe.Pointer(d.varp - uintptr(closureOffset)))
-  d.fn = closure
-  deferBits = deferBits &^ (1 << i)
-  *(*uint8)(unsafe.Pointer(d.varp - uintptr(deferBitsOffset))) = deferBits
-  p := d._panic
-  //执行延迟函数
-  deferCallSave(p, d.fn)
-  if p != nil && p.aborted {
-   break
-  }
-  d.fn = nil
-  if d._panic != nil && d._panic.recovered {
-   done = deferBits == 0
-   break
-  }
- }
+    for i := int(nDefers) - 1; i >= 0; i-- {
+    // // 读取函数funcdata地址和参数信息
+    var closureOffset uint32
+    closureOffset, fd = readvarintUnsafe(fd)
+    //不需要执行
+    if deferBits&(1<<i) == 0 {
+    continue
+    }
+    closure := *(*func())(unsafe.Pointer(d.varp - uintptr(closureOffset)))
+    d.fn = closure
+    deferBits = deferBits &^ (1 << i)
+    *(*uint8)(unsafe.Pointer(d.varp - uintptr(deferBitsOffset))) = deferBits
+    p := d._panic
+    //执行延迟函数
+    deferCallSave(p, d.fn)
+    if p != nil && p.aborted {
+    break
+    }
+    d.fn = nil
+    if d._panic != nil && d._panic.recovered {
+    done = deferBits == 0
+    break
+    }
+    }
 
- return done
-}
+    return done
+    }
 
-func deferCallSave(p *_panic, fn func()) {
- if p != nil {
-  p.argp = unsafe.Pointer(getargp())
-  p.pc = getcallerpc()
-  p.sp = unsafe.Pointer(getcallersp())
- }
- //执行延迟函数
- fn()
- if p != nil {
-  p.pc = 0
-  p.sp = unsafe.Pointer(nil)
- }
-}
-```
+    func deferCallSave(p *_panic, fn func()) {
+    if p != nil {
+    p.argp = unsafe.Pointer(getargp())
+    p.pc = getcallerpc()
+    p.sp = unsafe.Pointer(getcallersp())
+    }
+    //执行延迟函数
+    fn()
+    if p != nil {
+    p.pc = 0
+    p.sp = unsafe.Pointer(nil)
+    }
+    }
+    ```
 
 #### defer何时处理的？
 

@@ -215,7 +215,7 @@ void activeExpireCycle(int type) {
                     break;
                 }
             }
-            //如果扫描的数据个数0或者过期键的比例不可接受，重复上述扫描
+            //如果扫描的数据个数0或者过期键的比例超过了设定值，说明过期键较多，重复上述扫描
         } while (sampled == 0 ||
                  (expired*100/sampled) > config_cycle_acceptable_stale);
     }

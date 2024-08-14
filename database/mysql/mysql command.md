@@ -1,5 +1,11 @@
 # mysql command
 
+## 查看建表语句
+```sql
+show create table table_name;
+show table status like '%table_name%';
+```
+
 ## 登录客户端
 
 ```sql

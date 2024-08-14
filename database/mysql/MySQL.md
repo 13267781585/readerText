@@ -1,5 +1,49 @@
 # MySQL
 
+## 索引失效
+* 不满足最左匹配原则
+* 索引列计算
+* 使用函数处理索引列
+* 参数和索引类型不同
+* 模糊查询
+* or
+* not in/not exists
+* 索引成本大于全表查询
+
+## show profile
+```sql
+show profiles; -- 查询select的信息->获取sql语句的query_id
+show profile type1,type2... for query_id; -- 查询对应sql的profile信息
+```
+### type类型
+* all：显示所有的性能开销信息
+* block io：显示块 IO 相关的开销信息
+* context switches: 上下文切换相关开销
+* cpu：显示 CPU 相关的信息
+* ipc：显示发送和接收相关的开销信息
+* memory：显示内存相关的开销信息
+* page faults：显示页面错误相关开销信息
+* source：显示和 Source_function、Source_file、Source_line 相关的开销信息
+* swaps：显示交换次数的相关信息
+
+### 输出
+* starting - 正在初始化查询。
+* checking permissions - 检查用户权限。
+* Opening tables - 打开所需的表。
+* init - 初始化查询环境。
+* System lock - 系统级别的锁定。
+* Table lock - 表级别的锁定。
+* executing - 执行查询。
+* copy to tmp table - 将数据复制到临时表。
+* converting HEAP to MyISAM - 查询结果太大，使用磁盘存储。
+* Copying to tmp table on disk - 内存表太大，使用磁盘存储(tmp_table_size参数)。
+* Sorting result - 对结果进行排序。
+* Create sorting keys - 临时表进行排序。
+* Sending data - 发送数据到客户端，数据量大时需要关注。
+* statistic - 收集统计信息。
+* end - 查询执行结束。
+
+
 ## Unicode、UTF-8、UTF-16 和 UTF-32 
 Unicode定义了字符规则，UTF-8、UTF-16 和 UTF-32是Unicode标准的实现。
 1. **Unicode**:

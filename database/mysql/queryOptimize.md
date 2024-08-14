@@ -158,17 +158,11 @@ select * from table_name force index(key_name)
 select * from table_name order by if(a==1,1,0),a;
 ```
 
-## show profile参数
-
-* Sending data
-    The thread is reading and processing rows for a SELECT statement, and sending data to the client. Because operations occurring during this this state tend to perform large amounts of disk access (reads), it is often the longest-running state over the lifetime of a given query.
-
 ## 慢查询排除处理思路
 
 1. 慢查询发现途径
 
 * 慢查询日志
-*
 
 2. 查看慢查询的原因
 
