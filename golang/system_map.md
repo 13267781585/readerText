@@ -1276,6 +1276,14 @@ b := &m[1]
 * hashmap+锁、sync.Map都是不可扩展的，不能随着增加资源(cpu)提升性能，无法充分利用多核的优势
 <img src="./image/23.jpg" alt="23" />
 
+* 在读和删场景上的性能是最佳的，sync.Map领先一倍有多。
+* 在写入场景上sync.Map的性能非常差，落后原生 map+锁整整有一倍之多。
+因此在实际的业务场景中。假设是读多写少的场景，会更建议使用 sync.Map 类型。
+
+  [Go 并发读写 sync.map 的强大之处](https://zhuanlan.zhihu.com/p/413467399)
+
+
+  
 [Go 语言系列5：浮点型](http://www.360doc.com/content/22/0427/15/78746357_1028559896.shtml)
 [Go之父说：不懂浮点数不配当码农…](https://mp.weixin.qq.com/s?__biz=MzAxMTA4Njc0OQ==&mid=2651436532&idx=1&sn=6ada5a2c7e7fcbc37c05ba75e1ffc890&scene=19#wechat_redirect)
 本文是以下文章的读书笔记：

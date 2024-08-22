@@ -4,7 +4,7 @@
 es中排序和聚合操作，非文本字段通常使用doc values优化；文本字段不支持使用doc values，因此使用fielddata优化，fielddata不适用于大量文本字段使用，容易占用大量内存触发内从熔断错误。
 ### field_data
 * 是一种在内存中加载字段数据构造正排索引的机制，用于支持对文本字段的排序和聚合等操作。
-* 加载进内存后不会被垃圾回收，直至被显示清楚或者节点重启，可以通过indices.fielddata.cache.size配置控制fielddata的内存大小
+* 加载进内存后不会被垃圾回收，直至被主动清除或者节点重启，可以通过indices.fielddata.cache.size配置控制fielddata的内存大小
 
 ### 区别
 field_data 在使用时动态创建，存储在 JVM 堆内存中，索引速度快；doc_values 在索引时创建，存储在磁盘上，索引速度相对 field_data 慢一些。有排序和聚合需要的优先使用doc values。

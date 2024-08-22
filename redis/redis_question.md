@@ -3,6 +3,11 @@
 ## 事务
 [Redis事务详解](https://blog.csdn.net/weixin_43888891/article/details/125925199)
 
+## 延时高
+* 客户端连接池配置不合理
+[一次访问Redis延时高问题排查与总结](https://www.cnblogs.com/papering/p/17713855.html)
+* 大key/hot key
+
 ## cpu暴涨
 排查方向：业务/redis内部问题
 ### 业务

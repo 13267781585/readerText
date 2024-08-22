@@ -1,11 +1,5 @@
 # mysql command
 
-## 查看建表语句
-```sql
-show create table table_name;
-show table status like '%table_name%';
-```
-
 ## 登录客户端
 
 ```sql
@@ -24,10 +18,33 @@ mysql -u root -p
 ```sql
 show processlist;
 ```
+ 
+## 修改表
+```sql
+-- 添加字段
+alter table table_name add col_name col_type;
 
-## 表的数据统计
+-- 修改字段类型
+alter table table_name modify col_name col_type;
+
+-- 修改字段名称类型
+alter table table_name change old_col new_col col_type;
+
+-- 删除字段
+alter table table_name drop col_name;
+
+-- 修改表名
+alter table old_table_name rename new_table_name;
+
+-- 增加删除索引
+alter table table_name add/drop index/primary index/unique index  index_name(col_name,...);
+```
+
+## 表的信息
 
 ```sql
+show create table table_name; -- 查看建表语句
+
 --表的基本信息
 desc table_name;
 

@@ -1,5 +1,34 @@
 # Linux
 
+## 排查系统负载高原因
+
+负载高->系统中活跃和不可中断进程平均数
+
+### cpu使用率高
+
+通过top命令查找占用CPU最高的进程PID；
+通过top -Hp PID查找占用CPU最高的线程TID;
+通过vmstat -n 1从系统角度查看cpu使用情况 
+打印调用栈信息分析
+
+#### 现象、原因和解决办法
+
+* 空闲cpu低，系统占用cpu比例大于用户占用cpu，cpu资源不足，扩容
+* cpu使用率很高，集中在部分代码，排查是否有死循环，优化代码
+* cpu使用低，load高->存在不可中断睡眠状态进程，例如硬件设备、文件IO操作完成等，阻塞了其他进程，等待执行任务越来越多，只能恢复依赖资源或重启解决
+  * 通过ps -axjf命令查看是否存在D进程
+  * 通过top命令查看CPU等待IO时间，即%wa；
+  * 通过iostat -dx -m 1 10查看磁盘IO情况->指标含义
+  * 通过sar -n DEV 1 10查看网络IO情况；
+
+#### 现象、原因和解决办法
+
+* 磁盘容量小，扩大磁盘
+* 内存不足，扩大内存
+* 优化程序io
+[Linux系统中负载较高问题排查思路与解决方法](https://www.cnblogs.com/liuyupen/p/13905967.html)
+[监控工具pprof](https://studygolang.com/articles/35913?fr=sidebar)
+
 ## 授权
 ### chmod
 <img src=".\image\11.png" alt="11" />  
@@ -103,6 +132,13 @@ top
 
 ## 网络抓包
 ### tcpdump(非linux自带)
+```linux
+tcpdump [option] [proto] [dir] [type]
+
+// 抓取源ip是192.168.11.10且目的端口是22，或源ip是192.168.11.11且目的端口是80的数据包。
+tcpdump -vv (src host 192.168.11.10 and port 22) or 
+(src host 192.168.11.11 and port 80)
+```
 1. **抓取所有 TCP 数据包**:
    ```bash
    sudo tcpdump tcp
@@ -114,6 +150,9 @@ top
    sudo tcpdump udp
    ```
    类似地，使用 `udp` 过滤器可以捕获所有 UDP 数据包。
+
+[Tcpdump 详解（抓包）](https://blog.csdn.net/mm970919/article/details/141305763)
+[[Tcpdump] 网络抓包工具使用教程](https://blog.csdn.net/m0_37383484/article/details/135828598)
 
 ### 查看进程端口号
 1. ss (socket statistics)是netstat的替代工具，查询出所有正在连接和建立的tcp和udp连接。以下是使用ss命令查看程序占用端口号的示例：

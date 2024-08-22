@@ -71,6 +71,7 @@ scard key 集合大小
 smembers key 返回集合数据  
 sismember key value 判断value 是否在集合中1是 0否  
 spop key 随机移除元素  
+srem key member [member ...] 从集合中删除元素
 sunion key1 [key2] 返回并集  
 sunionstore dest key [key1]   
 sinter key1 [key2] 返回交集  
@@ -80,7 +81,6 @@ sdiffstore dest key [key1]
 ```
 
 ## 有序集合
-
 ```redis
 zadd key score value score1 value1 添加元素  
 zcard key 集合大小  
@@ -91,10 +91,10 @@ ZINCRBY key increment member
 ZINTERSTORE destination numkeys key [key ...]  
 计算给定的一个或多个有序集的交集并将结果集存储在新的有序集合   destination 中 numkeys为key的数量   
 ZRANGE key start stop [WITHSCORES]  
-查询范围内的元素(是否包含分数)  
+查询范围内的元素(withscores会返回数据分数)  
 ZRANGEBYSCORE key min max [WITHSCORES] [LIMIT offset count]  
 通过分数返回有序集合指定区间内的成员  
-ZRANGEBYSCORE zset (1 5(返回所有符合条件 1 < score <= 5 的成员)  
+ZRANGEBYSCORE zset 1 5(返回所有符合条件 1 < score <= 5 的成员)  
 ZRANK key member   
 返回有序集合中指定成员的索引  
 ZREM key member [member ...]  
